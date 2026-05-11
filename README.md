@@ -231,6 +231,51 @@ EMAIL_TO=receiver@example.com
 
 邮件发送失败不会中断主流程。
 
+## 公众号草稿箱同步
+
+确认稿件后，可以在本地 Mac 把当天文章同步到公众号草稿箱。第一版只创建草稿，不自动发布。
+
+需要先在 `.env` 配置：
+
+```env
+ENABLE_WECHAT_DRAFT=true
+WECHAT_APP_ID=你的公众号AppID
+WECHAT_APP_SECRET=你的公众号AppSecret
+WECHAT_AUTHOR=老六
+WECHAT_THUMB_MEDIA_ID=可选，已经上传过的封面素材media_id
+WECHAT_COVER_IMAGE_PATH=assets/default_cover.jpg
+WECHAT_CONTENT_SOURCE_URL=
+```
+
+封面图二选一：
+
+- 推荐：配置 `WECHAT_THUMB_MEDIA_ID`，使用公众号素材库里已经上传过的封面素材。
+- 或者：配置 `WECHAT_COVER_IMAGE_PATH`，脚本会先上传本地封面图，再创建草稿。
+
+先本地预检，不调用微信接口：
+
+```bash
+cd /Users/liuwenjun-15-air/Documents/New\ project\ 2/wechat-content-agent
+source .venv/bin/activate
+python src/sync_wechat_draft.py --date 2026-05-11 --dry-run
+```
+
+确认后同步到公众号草稿箱：
+
+```bash
+python src/sync_wechat_draft.py --date 2026-05-11
+```
+
+成功后会生成：
+
+```text
+outputs/2026-05-11/wechat_draft_result.json
+```
+
+并在终端显示公众号草稿 `media_id`。如果开启飞书通知，也会向群里汇报“公众号草稿箱同步完成”。
+
+注意：微信公众号接口通常需要 IP 白名单。最稳做法是把你 Mac 当前公网 IP 加到公众号后台白名单后，在本地执行同步命令。
+
 ## GitHub Actions
 
 工作流文件：`.github/workflows/daily_content.yml`。
@@ -262,6 +307,13 @@ SMTP_PORT
 SMTP_USER
 SMTP_PASSWORD
 EMAIL_TO
+ENABLE_WECHAT_DRAFT
+WECHAT_APP_ID
+WECHAT_APP_SECRET
+WECHAT_AUTHOR
+WECHAT_THUMB_MEDIA_ID
+WECHAT_COVER_IMAGE_PATH
+WECHAT_CONTENT_SOURCE_URL
 ```
 
 手动运行方式：
@@ -287,9 +339,10 @@ EMAIL_TO
 2. 系统创建飞书协作文档，并把链接发到飞书群
 3. 飞书群收到“今日内容包完成”
 4. 主编在飞书文档里检查终稿并回复 `通过 / 修改`
-5. 运营复制正文到公众号后台并回复 `已排版 / 待排版`
-6. 老板或主编回复 `可发 / 暂缓`
-7. 运营人工发布
+5. 本地运行 `python src/sync_wechat_draft.py --date YYYY-MM-DD` 同步到公众号草稿箱
+6. 运营进入公众号后台检查排版并回复 `已排版 / 待排版`
+7. 老板或主编回复 `可发 / 暂缓`
+8. 运营人工发布
 
 ## 测试
 
@@ -305,7 +358,7 @@ python3 -m pytest -q
 
 ## 后续升级方向
 
-- 接入公众号草稿箱，但仍保留人工确认发布
+- 增加固定 IP 云服务器，稳定执行公众号草稿箱同步
 - 增加行业热点抓取和同行爆文选题池
 - 增加次日 09:00 数据复盘
 - 把优秀文章沉淀为课程案例库、销售跟进素材和朋友圈长图
