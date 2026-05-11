@@ -184,43 +184,54 @@ def markdown_to_wechat_html(markdown_text: str) -> str:
                 list_mode = None
             continue
 
-        if line.startswith("# "):
+        if line == "---":
             if list_mode:
                 html_lines.append(f"</{list_mode}>")
                 list_mode = None
-            html_lines.append(f"<h1 style=\"font-size:22px;line-height:1.45;margin:0 0 20px;font-weight:700;\">{format_inline(line[2:])}</h1>")
+            html_lines.append("<section style=\"height:1px;background:#E8E2D8;margin:28px 0;\"></section>")
+        elif line.startswith("# "):
+            if list_mode:
+                html_lines.append(f"</{list_mode}>")
+                list_mode = None
+            html_lines.append(f"<h1 style=\"font-size:24px;line-height:1.5;margin:0 0 22px;font-weight:700;color:#1F1F1F;letter-spacing:0;\">{format_inline(line[2:])}</h1>")
         elif line.startswith("## "):
             if list_mode:
                 html_lines.append(f"</{list_mode}>")
                 list_mode = None
-            html_lines.append(f"<h2 style=\"font-size:18px;line-height:1.6;margin:28px 0 12px;font-weight:700;\">{format_inline(line[3:])}</h2>")
+            html_lines.append(f"<h2 style=\"font-size:18px;line-height:1.7;margin:34px 0 16px;padding-left:10px;border-left:4px solid #B88746;font-weight:700;color:#1F1F1F;\">{format_inline(line[3:])}</h2>")
+        elif line.startswith(">"):
+            if list_mode:
+                html_lines.append(f"</{list_mode}>")
+                list_mode = None
+            quote = line.lstrip("> ").strip()
+            html_lines.append(f"<blockquote style=\"margin:22px 0;padding:14px 16px;background:#F8F5EF;border-left:4px solid #B88746;color:#4A4035;font-size:16px;line-height:1.9;\">{format_inline(quote)}</blockquote>")
         elif line.startswith("- "):
             if list_mode != "ul":
                 if list_mode:
                     html_lines.append(f"</{list_mode}>")
-                html_lines.append("<ul style=\"padding-left:1.2em;margin:10px 0;\">")
+                html_lines.append("<ul style=\"padding-left:1.2em;margin:16px 0;\">")
                 list_mode = "ul"
-            html_lines.append(f"<li style=\"line-height:1.9;margin:4px 0;\">{format_inline(line[2:])}</li>")
+            html_lines.append(f"<li style=\"line-height:2;margin:8px 0;color:#2A2A2A;\">{format_inline(line[2:])}</li>")
         elif re.match(r"^\d+[.、]\s+", line):
             if list_mode != "ol":
                 if list_mode:
                     html_lines.append(f"</{list_mode}>")
-                html_lines.append("<ol style=\"padding-left:1.2em;margin:10px 0;\">")
+                html_lines.append("<ol style=\"padding-left:1.2em;margin:16px 0;\">")
                 list_mode = "ol"
             item = re.sub(r"^\d+[.、]\s+", "", line)
-            html_lines.append(f"<li style=\"line-height:1.9;margin:4px 0;\">{format_inline(item)}</li>")
+            html_lines.append(f"<li style=\"line-height:2;margin:8px 0;color:#2A2A2A;\">{format_inline(item)}</li>")
         else:
             if list_mode:
                 html_lines.append(f"</{list_mode}>")
                 list_mode = None
-            html_lines.append(f"<p style=\"font-size:16px;line-height:1.9;margin:14px 0;color:#222;\">{format_inline(line)}</p>")
+            html_lines.append(f"<p style=\"font-size:16px;line-height:2.05;margin:18px 0;color:#2A2A2A;letter-spacing:0;\">{format_inline(line)}</p>")
 
     if list_mode:
         html_lines.append(f"</{list_mode}>")
 
     return "\n".join(
         [
-            "<section style=\"font-size:16px;line-height:1.9;color:#222;\">",
+            "<section style=\"font-size:16px;line-height:2.05;color:#2A2A2A;padding:0 2px;\">",
             *html_lines,
             "</section>",
         ]

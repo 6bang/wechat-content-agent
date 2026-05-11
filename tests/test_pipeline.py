@@ -90,7 +90,10 @@ suggested_publish_time: "18:00"
     assert (output_dir / "email_summary.md").exists()
     assert (output_dir / "run_summary.json").exists()
     assert '"feishu_doc_created": false' in (output_dir / "run_summary.json").read_text(encoding="utf-8")
-    assert len((output_dir / "wechat_ready_article.md").read_text(encoding="utf-8")) >= 2200
+    wechat_ready = (output_dir / "wechat_ready_article.md").read_text(encoding="utf-8")
+    assert len(wechat_ready) >= 2200
+    assert "> " in wechat_ready
+    assert "主编提示" not in wechat_ready
     for layer in ["C", "E", "S"]:
         article_dir = output_dir / "articles" / layer
         assert (article_dir / "draft.md").exists()
@@ -100,4 +103,6 @@ suggested_publish_time: "18:00"
         assert (article_dir / "publish_package.md").exists()
         assert (article_dir / "visual_layout.md").exists()
         assert (article_dir / "visual_assets" / "cover.svg").exists()
-        assert len((article_dir / "wechat_ready_article.md").read_text(encoding="utf-8")) >= 2200
+        article_text = (article_dir / "wechat_ready_article.md").read_text(encoding="utf-8")
+        assert len(article_text) >= 2200
+        assert "主编提示" not in article_text

@@ -57,6 +57,8 @@ DEFAULT_SCHEDULE = {
 FEISHU_SPACER_MARKER = "<FEISHU_SPACER>"
 FEISHU_ARTICLE_LINE_CHARS = 34
 FEISHU_ARTICLE_PARAGRAPH_LINES = 3
+WECHAT_ARTICLE_LINE_CHARS = 28
+WECHAT_ARTICLE_PARAGRAPH_LINES = 3
 
 STAGE_REPORTS = {
     "topics": {
@@ -644,7 +646,145 @@ def render_feishu_article_paths(article_results: list[dict[str, Any]], publish_d
 
 
 def render_wechat_ready_article(review: ReviewResult) -> str:
-    return review.final_body
+    return format_wechat_ready_article(review.final_title, review.final_body)
+
+
+def format_wechat_ready_article(title: str, markdown_text: str) -> str:
+    lines: list[str] = []
+    title_written = False
+    highlighted_count = 0
+    pull_quote = build_pull_quote(title, markdown_text)
+
+    for block in article_blocks(markdown_text):
+        if not block:
+            continue
+        if block.startswith("主编提示"):
+            continue
+
+        if block.startswith("# "):
+            clean_title = block[2:].strip() or title
+            lines.extend([f"# {clean_title}", ""])
+            if pull_quote:
+                lines.extend([f"> {pull_quote}", "", "---", ""])
+            title_written = True
+            continue
+
+        if block.startswith("## "):
+            lines.extend([format_wechat_heading(block[3:].strip()), ""])
+            continue
+
+        if block.startswith("### "):
+            lines.extend([f"### {block[4:].strip()}", ""])
+            continue
+
+        if block.startswith(">"):
+            quote = clean_markdown_block(block).lstrip("> ").strip()
+            if quote:
+                lines.extend([f"> {quote}", ""])
+            continue
+
+        if is_markdown_list_block(block):
+            for item in clean_markdown_block(block).splitlines():
+                if item.strip():
+                    lines.extend([item.strip(), ""])
+            continue
+
+        for paragraph in split_article_paragraph(
+            clean_markdown_block(block),
+            max_chars=WECHAT_ARTICLE_LINE_CHARS * WECHAT_ARTICLE_PARAGRAPH_LINES,
+        ):
+            paragraph = tighten_article_sentence(paragraph)
+            if highlighted_count < 8 and should_highlight_paragraph(paragraph):
+                paragraph = f"**{paragraph}**"
+                highlighted_count += 1
+            lines.extend([paragraph, ""])
+
+    if not title_written:
+        lines = [f"# {title}", "", *( [f"> {pull_quote}", "", "---", ""] if pull_quote else []), *lines]
+
+    return trim_blank_lines(lines)
+
+
+def format_wechat_heading(heading: str) -> str:
+    compact = re.sub(r"\s+", "", heading.strip())
+    return f"## {compact}"
+
+
+def build_pull_quote(title: str, markdown_text: str) -> str:
+    if "不敢招运营" in title or "招运营" in title:
+        return "你以为是在招运营，其实是在给系统漏洞买单。"
+    if "老板越忙" in title:
+        return "老板越忙，不一定是公司更强，可能是系统更弱。"
+    if "新品SOP" in title or "详情页" in title:
+        return "新品第一步做错了，后面每一步都在烧钱。"
+
+    candidates = [
+        "老板越忙，不一定是公司更强，可能是系统更弱。",
+        "不是员工不努力，而是公司没有标准动作。",
+        "爆款可复制，靠的不是人，而是流程。",
+        "管理的终点，不是老板更勤奋，而是团队能自动运转。",
+        "你缺的不是努力，缺的是一套能跑起来的系统。",
+    ]
+    source = f"{title}\n{markdown_text}"
+    for candidate in candidates:
+        if candidate in source:
+            return candidate
+    return "真正能长大的电商公司，最后拼的不是个人英雄，而是系统能力。"
+
+
+def should_highlight_paragraph(paragraph: str) -> bool:
+    if len(paragraph) > 90:
+        return False
+    keywords = [
+        "老板越忙",
+        "不是员工不努力",
+        "真正的问题",
+        "爆款可复制",
+        "管理就从",
+        "你缺的不是",
+        "流程不是",
+        "公司没有标准动作",
+        "系统越弱",
+    ]
+    return any(keyword in paragraph for keyword in keywords)
+
+
+def tighten_article_sentence(text: str) -> str:
+    replacements = {
+        "这几年我看过很多电商团队，有一个现象特别明显：": "我看过很多电商团队，发现一个扎心现象：",
+        "这篇文章不讲虚的，我们就拆一个问题：": "这篇不讲虚的，只拆一个问题：",
+        "你以为的问题，可能是运营能力不行。": "你以为是运营不行。",
+        "但真正的问题往往是：": "但真正的问题是：",
+        "第一件事，做知识库。": "第一，做知识库。",
+        "第二件事，做多维表。": "第二，做多维表。",
+        "第三件事，做流程可视化。": "第三，做流程可视化。",
+        "第一个动作，": "第一个动作：",
+        "第二个动作，": "第二个动作：",
+        "第三个动作，": "第三个动作：",
+    }
+    tightened = text.strip()
+    for source, target in replacements.items():
+        tightened = tightened.replace(source, target)
+    return tightened
+
+
+def trim_blank_lines(lines: list[str]) -> str:
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+
+    normalized: list[str] = []
+    blank_count = 0
+    for line in lines:
+        if not line.strip():
+            blank_count += 1
+            if blank_count <= 1:
+                normalized.append("")
+            continue
+        blank_count = 0
+        normalized.append(line.rstrip())
+    return "\n".join(normalized)
 
 
 def render_article_selection(
@@ -823,6 +963,10 @@ def format_article_for_feishu(markdown_text: str) -> list[str]:
     for block in article_blocks(markdown_text):
         if not block:
             continue
+        if block.startswith("主编提示"):
+            continue
+        if block.strip() == "---":
+            continue
         if block.startswith("# "):
             paragraphs.append(block[2:].strip())
             continue
@@ -831,6 +975,11 @@ def format_article_for_feishu(markdown_text: str) -> list[str]:
             continue
         if block.startswith("### "):
             paragraphs.append(block[4:].strip())
+            continue
+        if block.startswith(">"):
+            quote = clean_markdown_block(block)
+            if quote:
+                paragraphs.append(f"金句：{quote}")
             continue
         if is_markdown_list_block(block):
             paragraphs.append(clean_markdown_block(block))
@@ -851,12 +1000,13 @@ def is_markdown_list_block(block: str) -> bool:
 
 def clean_markdown_block(block: str) -> str:
     text = re.sub(r"^\s{0,3}[-*]\s+", "• ", block, flags=re.MULTILINE)
+    text = re.sub(r"^\s{0,3}>\s*", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
     return text.strip()
 
 
-def split_article_paragraph(text: str) -> list[str]:
-    max_chars = FEISHU_ARTICLE_LINE_CHARS * FEISHU_ARTICLE_PARAGRAPH_LINES
+def split_article_paragraph(text: str, max_chars: int | None = None) -> list[str]:
+    max_chars = max_chars or FEISHU_ARTICLE_LINE_CHARS * FEISHU_ARTICLE_PARAGRAPH_LINES
     sentences = split_sentences(text)
     chunks: list[str] = []
     current = ""
