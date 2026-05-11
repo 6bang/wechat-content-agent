@@ -34,16 +34,28 @@ class OperationsAgent:
         return PublishPackage(
             title=review.final_title,
             title_options=self._build_title_options(topic, review),
-            cover_main_title=self._build_cover_main_title(topic),
-            cover_subtitle=self._build_cover_subtitle(topic),
-            summary=summary,
+            cover_copy={
+                "main_title": self._build_cover_main_title(topic),
+                "subtitle": self._build_cover_subtitle(topic),
+                "visual_suggestion": "使用电商团队会议、流程看板或老板复盘场景，画面简洁、有管理感。",
+            },
+            digest=[
+                summary,
+                f"这篇文章从{topic.layer_name}角度，拆解{topic.user_pain}",
+                f"给电商老板一个可执行提醒：{topic.core_point}",
+            ],
             layout_suggestions=self._build_layout_suggestions(),
-            moments_copy_options=self._build_moments_copy_options(topic),
-            community_copy_options=self._build_community_copy_options(topic),
-            direct_message_script=self._build_direct_message_script(topic),
+            moments_copy=self._build_moments_copy_options(topic),
+            group_copy=self._build_community_copy_options(topic),
+            private_message_copy=self._build_direct_message_script(topic),
             comment_questions=self._build_comment_questions(topic),
-            review_metrics=self._build_review_metrics(),
-            tags=["电商运营", "电商管理", topic.layer_name, "流程化组织"],
+            repurpose_suggestions=[
+                "适合拆成短视频：老板越忙，公司越乱的三个信号。",
+                "适合做朋友圈长图：流程化组织的3个检查点。",
+                "适合沉淀成销售素材：客户咨询时用于解释为什么要先搭流程。",
+                "适合放进课程案例库：作为运营岗位管理或SOP章节案例。",
+            ],
+            data_review_template=self._build_review_metrics(),
             body=review.final_body,
             selected_layer=topic.layer,
         )
@@ -66,9 +78,12 @@ class OperationsAgent:
 
     def _build_layout_suggestions(self) -> list[str]:
         return [
-            "开头痛点段落控制在 3 段内，先让老板看到自己的问题。",
-            "方法部分用编号列表，方便收藏和转发给团队。",
-            "结尾转化用轻咨询口吻，不使用强销售表达。",
+            "小标题使用问题式标题，方便老板快速扫读。",
+            "金句加粗，适合截图转发。",
+            "方法部分可加入流程表或检查清单。",
+            "每段控制在 3-5 行，减少手机阅读压力。",
+            "二维码放在结尾转化提醒之后。",
+            "结尾引导放在互动问题后，用轻咨询口吻。",
         ]
 
     def _build_moments_copy_options(self, topic: ContentTopic) -> list[str]:
@@ -94,11 +109,19 @@ class OperationsAgent:
     def _build_review_metrics(self) -> list[str]:
         return [
             "阅读完成率",
+            "打开率",
+            "点赞率",
+            "在看率",
+            "分享率",
             "收藏率",
+            "留言数",
+            "新增关注",
             "转发到朋友圈和社群次数",
             "评论区有效问题数量",
             "私信咨询数量",
-            "课程或诊断关键词触发数量",
+            "课程咨询数",
+            "线索质量",
+            "下次优化建议",
         ]
 
     def _build_direct_message_script(self, topic: ContentTopic) -> str:

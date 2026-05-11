@@ -32,14 +32,44 @@ class WriterAgent:
         topic = decision.selected_topic
         outline = self._build_outline(topic)
         body = self._build_body(topic, outline, decision.editor_note)
-        return ArticleDraft(title=topic.title, outline=outline, body=body, topic=topic)
+        return ArticleDraft(
+            title=decision.final_title_suggestion,
+            article_type=decision.article_positioning,
+            target_user=decision.target_user,
+            core_pain=topic.user_pain,
+            core_point=topic.core_point,
+            opening_hook=topic.opening_hook,
+            outline=outline,
+            case_design={
+                "案例背景": topic.case_direction,
+                "案例冲突": topic.user_pain,
+                "案例结果": "团队通过流程、目标和检查点降低试错成本，产出更稳定。",
+                "案例启发": "管理不是靠老板更忙，而是靠系统让团队重复做对动作。",
+            },
+            golden_sentences=[
+                "不是员工不努力，而是公司没有标准动作。",
+                "老板越忙，不一定代表公司越好，可能说明系统越弱。",
+                "流程不是把人管死，而是让普通人也能做出稳定结果。",
+                "管理的终点，不是老板更勤奋，而是团队能自动运转。",
+                "SOP不是写给老板看的，而是写给团队重复执行的。",
+            ],
+            full_draft=body,
+            ending_cta="如果你也想梳理店铺运营流程，可以私信关键词「诊断」，先从一个核心流程开始拆。",
+            topic=topic,
+        )
 
     def write_draft(self, topic: ContentTopic) -> dict[str, str]:
         decision = EditorialDecision(
+            scoring_table={},
             selected_topic=topic,
-            scores={},
-            rationale="兼容旧调用。",
-            editor_note="保持结构清晰，给出可执行建议。",
+            selection_reason="兼容旧调用。",
+            article_positioning="方法论干货型",
+            target_user=topic.target_user,
+            writing_direction="保持结构清晰，给出可执行建议。",
+            avoid_direction="不要写成泛泛观点文。",
+            must_include_points=["痛点", "方法", "案例"],
+            conversion_suggestion=topic.suitable_product,
+            final_title_suggestion=topic.title,
         )
         draft = self.write_article(decision)
         return {"title": draft.title, "body": draft.body}
@@ -51,6 +81,8 @@ class WriterAgent:
             f"痛点: {topic.pain_point}",
             "拆解: 问题为什么不是单点动作能解决",
             "方法: 给出 3 个可执行管理动作",
+            "案例: 用一个电商团队的真实管理场景讲透",
+            "金句: 用一句老板能记住的话收住观点",
             "结尾: 用低压力方式引导留言或私信咨询",
         ]
 

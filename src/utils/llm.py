@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 try:
     from dotenv import load_dotenv
@@ -39,7 +40,7 @@ def load_env_file(path: Path) -> None:
 
 
 def str_to_bool(value: str | None, default: bool = False) -> bool:
-    if value is None:
+    if value is None or value.strip() == "":
         return default
     return value.strip().lower() in {"1", "true", "yes", "y", "on"}
 
@@ -72,31 +73,65 @@ def mock_llm(system_prompt: str, user_prompt: str) -> str:
 
 
 def call_llm(system_prompt: str, user_prompt: str) -> str:
-    if use_mock_mode():
-        return mock_llm(system_prompt, user_prompt)
-
-    load_env()
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is required when USE_MOCK=false.")
-
     try:
-        from openai import OpenAI
-    except ImportError as exc:  # pragma: no cover
-        raise RuntimeError("openai package is required. Please run: pip install -r requirements.txt") from exc
+        if use_mock_mode():
+            return mock_llm(system_prompt, user_prompt)
 
-    base_url = os.getenv("OPENAI_BASE_URL") or None
-    client_kwargs = {"api_key": api_key}
-    if base_url:
-        client_kwargs["base_url"] = base_url
+        load_env()
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is required when USE_MOCK=false.")
 
-    client = OpenAI(**client_kwargs)
-    response = client.chat.completions.create(
-        model=get_model_name(),
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=get_temperature(),
-    )
-    return response.choices[0].message.content or ""
+        try:
+            from openai import OpenAI
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError("openai package is required. Please run: pip install -r requirements.txt") from exc
+
+        base_url = os.getenv("OPENAI_BASE_URL") or None
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+
+        client = OpenAI(**client_kwargs)
+        if hasattr(client, "responses"):
+            response = client.responses.create(
+                model=get_model_name(),
+                instructions=system_prompt,
+                input=user_prompt,
+            )
+            return extract_response_text(response)
+
+        response = client.chat.completions.create(
+            model=get_model_name(),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=get_temperature(),
+        )
+        return response.choices[0].message.content or ""
+    except Exception as exc:
+        print(f"LLM call failed: {exc}")
+        raise
+
+
+def extract_response_text(response: Any) -> str:
+    output_text = getattr(response, "output_text", None)
+    if output_text:
+        return output_text
+
+    output_items = getattr(response, "output", None) or []
+    text_parts: list[str] = []
+    for item in output_items:
+        content_items = get_value(item, "content") or []
+        for content in content_items:
+            text = get_value(content, "text")
+            if text:
+                text_parts.append(str(text))
+    return "\n".join(text_parts)
+
+
+def get_value(item: Any, key: str) -> Any:
+    if isinstance(item, dict):
+        return item.get(key)
+    return getattr(item, key, None)

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+
+DEFAULT_TIMEZONE = "Asia/Shanghai"
 
 
 def today_iso() -> str:
-    return date.today().isoformat()
+    return datetime.now(ZoneInfo(DEFAULT_TIMEZONE)).date().isoformat()

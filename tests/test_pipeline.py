@@ -12,7 +12,11 @@ sys.path.insert(0, str(SRC_DIR))
 from workflow.daily_pipeline import run_daily_pipeline
 
 
-def test_daily_pipeline_creates_publish_package(tmp_path: Path) -> None:
+def test_daily_pipeline_creates_publish_package(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("USE_MOCK", "true")
+    monkeypatch.setenv("ENABLE_FEISHU", "false")
+    monkeypatch.setenv("ENABLE_EMAIL", "false")
+
     root = tmp_path / "project"
     (root / "config").mkdir(parents=True)
     (root / "outputs").mkdir()
@@ -35,6 +39,14 @@ weekly_calendar:
     layer: 泛流量
     column: 老板认知课
     description: 企业经营认知
+""".strip(),
+        encoding="utf-8",
+    )
+    (root / "config" / "schedule.yaml").write_text(
+        """
+daily_run_time: "06:00"
+timezone: "Asia/Shanghai"
+suggested_publish_time: "18:00"
 """.strip(),
         encoding="utf-8",
     )
@@ -64,5 +76,8 @@ weekly_calendar:
     assert (output_dir / "draft.md").exists()
     assert (output_dir / "review.md").exists()
     assert (output_dir / "final_article.md").exists()
+    assert (output_dir / "wechat_ready_article.md").exists()
     assert (output_dir / "publish_package.md").exists()
     assert (output_dir / "feishu_message.md").exists()
+    assert (output_dir / "email_summary.md").exists()
+    assert (output_dir / "run_summary.json").exists()

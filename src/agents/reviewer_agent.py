@@ -36,16 +36,20 @@ class ReviewerAgent:
         revision_notes = [
             "强化了问题到方法的转承关系。",
             "保留咨询引导，但避免硬广表达。",
+            "补强了专业度、工具感和人工确认发布提醒。",
         ]
         if issues:
             revision_notes.append("删除或替换了夸大、绝对化表达。")
 
         return ReviewResult(
-            approved=True,
-            issues=issues,
-            revision_notes=revision_notes,
-            final_title=draft.title,
-            final_body=final_body,
+            review_conclusion="修改后可发布" if issues else "可发布",
+            problems=issues or ["整体结构可发布，建议主编人工确认案例真实性。"],
+            improvement_suggestions=revision_notes,
+            optimized_title=draft.title,
+            optimized_opening=draft.opening_hook,
+            optimized_ending=draft.ending_cta,
+            final_article=final_body,
+            risk_notes=["避免承诺课程立刻带来确定结果。", "案例表述保持匿名和概括，不使用未经授权客户信息。"],
         )
 
     def _remove_banned_words(self, body: str) -> str:

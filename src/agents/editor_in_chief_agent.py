@@ -40,19 +40,34 @@ class EditorInChiefAgent:
         scores = {topic.layer: self._score_topic(topic, calendar_item) for topic in topics}
         selected_topic = max(
             topics,
-            key=lambda topic: sum(scores[topic.layer].values()),
+            key=lambda topic: (
+                self._matches_calendar_layer(topic, calendar_item or {}),
+                scores[topic.layer]["total_score"],
+            ),
         )
         column = ""
         if calendar_item:
             column = f"今天栏目是 {calendar_item.get('code')}「{calendar_item.get('column')}」，"
 
         return EditorialDecision(
+            scoring_table=scores,
             selected_topic=selected_topic,
-            scores=scores,
-            rationale=(
-                f"{column}今日主选题选择 {selected_topic.layer} 层，因为它在读者痛点、业务相关性和咨询承接上综合得分最高。"
+            selection_reason=(
+                f"{column}今日主选题选择 {selected_topic.layer} 层，因为它符合当天栏目节奏，并且在读者痛点、业务相关性和咨询承接上综合得分最高。"
             ),
-            editor_note="写作时要先讲清老板的真实困境，再给出可执行方法，最后轻量引导咨询。",
+            article_positioning=self._positioning_for(selected_topic),
+            target_user=selected_topic.target_user,
+            writing_direction="先讲清老板的真实困境，再拆解背后的流程、岗位或目标管理问题，最后给出可执行动作。",
+            avoid_direction="不要写成泛泛观点文，不要只讲情绪，不要硬广课程，也不要承诺立刻见效。",
+            must_include_points=[
+                "一个真实的老板或团队管理场景",
+                "问题背后的流程、标准或绩效原因",
+                "3个可以立刻执行的动作",
+                "一句能被转发的管理金句",
+                "自然引出课程、咨询或工具",
+            ],
+            conversion_suggestion=selected_topic.suitable_product,
+            final_title_suggestion=selected_topic.title,
         )
 
     def _score_topic(
@@ -61,17 +76,25 @@ class EditorInChiefAgent:
         calendar_item: dict[str, Any] | None = None,
     ) -> dict[str, int]:
         base_scores = {
-            "C": {"传播价值": 28, "精准流量价值": 20, "专业信任价值": 18, "业务转化价值": 16, "是否符合本周内容节奏": 18},
-            "E": {"传播价值": 24, "精准流量价值": 26, "专业信任价值": 22, "业务转化价值": 22, "是否符合本周内容节奏": 20},
-            "S": {"传播价值": 18, "精准流量价值": 24, "专业信任价值": 28, "业务转化价值": 30, "是否符合本周内容节奏": 20},
+            "C": {"pain_score": 4, "spread_score": 5, "precision_score": 3, "trust_score": 3, "conversion_score": 3, "calendar_score": 3},
+            "E": {"pain_score": 5, "spread_score": 4, "precision_score": 5, "trust_score": 4, "conversion_score": 4, "calendar_score": 3},
+            "S": {"pain_score": 5, "spread_score": 3, "precision_score": 5, "trust_score": 5, "conversion_score": 5, "calendar_score": 3},
         }
         scores = dict(base_scores.get(
             topic.layer,
-            {"传播价值": 20, "精准流量价值": 20, "专业信任价值": 20, "业务转化价值": 20, "是否符合本周内容节奏": 20},
+            {"pain_score": 3, "spread_score": 3, "precision_score": 3, "trust_score": 3, "conversion_score": 3, "calendar_score": 3},
         ))
-        if calendar_item and self._matches_calendar_layer(topic, calendar_item):
-            scores["是否符合本周内容节奏"] += 30
+        if calendar_item:
+            scores["calendar_score"] = 5 if self._matches_calendar_layer(topic, calendar_item) else 1
+        scores["total_score"] = sum(value for key, value in scores.items() if key != "total_score")
         return scores
+
+    def _positioning_for(self, topic: ContentTopic) -> str:
+        if topic.layer == "C":
+            return "认知升级型"
+        if topic.layer == "E":
+            return "痛点共鸣型"
+        return "方法论干货型"
 
     def _matches_calendar_layer(self, topic: ContentTopic, calendar_item: dict[str, Any]) -> bool:
         code = str(calendar_item.get("code", ""))
