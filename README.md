@@ -100,6 +100,7 @@ wechat_ready_article.md
 publish_package.md
 visual_layout.md
 visual_assets/
+feishu_doc_preview.md
 feishu_message.md
 email_summary.md
 run_summary.json
@@ -214,15 +215,13 @@ FEISHU_CONTROLLER_WEBHOOK_URL=总控Agent机器人Webhook
 
 如果开启飞书文档，系统会在每天内容包生成后自动创建一份飞书文档，把以下内容写进去：
 
-- 今日 3 个选题
-- 主编评估结果
-- 文章大纲和公众号初稿
-- 审稿意见
-- 最终定稿
-- 可复制公众号正文
-- 发布包
-- 视觉排版方案和配图清单
-- 人工确认发布规则
+- 今日基础信息和人工确认发布规则
+- C/E/S 三篇候选文章连续阅读版
+- 每篇正文按公众号阅读节奏重新分段，尽量控制在手机端 3 行以内
+- 段落之间留一行空白，三篇文章之间留 5 行
+- 发布包、视觉排版方案、配图素材和草稿箱同步命令放在文末索引，避免打断阅读
+
+同时会在本地输出 `feishu_doc_preview.md`，方便你在 GitHub artifact 里预览飞书文档正文结构。
 
 需要配置：
 

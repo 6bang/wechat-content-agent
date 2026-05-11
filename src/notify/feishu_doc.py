@@ -16,6 +16,8 @@ FEISHU_API_BASE = "https://open.feishu.cn/open-apis"
 TEXT_BLOCK_TYPE = 2
 MAX_TEXT_BLOCK_CHARS = 1000
 MAX_BLOCKS_PER_REQUEST = 40
+SPACER_MARKER = "<FEISHU_SPACER>"
+SPACER_TEXT = "　"
 
 
 class FeishuDocError(RuntimeError):
@@ -154,24 +156,29 @@ def write_markdown_to_document(
 def markdown_to_text_blocks(markdown_content: str) -> list[dict[str, Any]]:
     blocks = []
     for paragraph in split_markdown_paragraphs(markdown_content):
+        if paragraph == SPACER_MARKER:
+            blocks.append(build_text_block(SPACER_TEXT))
+            continue
         for part in split_text(paragraph, MAX_TEXT_BLOCK_CHARS):
-            blocks.append(
-                {
-                    "block_type": TEXT_BLOCK_TYPE,
-                    "text": {
-                        "elements": [
-                            {
-                                "text_run": {
-                                    "content": part,
-                                    "text_element_style": {},
-                                }
-                            }
-                        ],
-                        "style": {},
-                    },
-                }
-            )
+            blocks.append(build_text_block(part))
     return blocks
+
+
+def build_text_block(content: str) -> dict[str, Any]:
+    return {
+        "block_type": TEXT_BLOCK_TYPE,
+        "text": {
+            "elements": [
+                {
+                    "text_run": {
+                        "content": content,
+                        "text_element_style": {},
+                    }
+                }
+            ],
+            "style": {},
+        },
+    }
 
 
 def split_markdown_paragraphs(markdown_content: str) -> list[str]:

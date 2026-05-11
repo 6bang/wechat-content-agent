@@ -84,6 +84,8 @@ suggested_publish_time: "18:00"
     assert (output_dir / "publish_package.md").exists()
     assert (output_dir / "visual_layout.md").exists()
     assert (output_dir / "visual_assets" / "cover.svg").exists()
+    assert (output_dir / "feishu_doc_preview.md").exists()
+    assert "<FEISHU_SPACER>" not in (output_dir / "feishu_doc_preview.md").read_text(encoding="utf-8")
     assert (output_dir / "feishu_message.md").exists()
     assert (output_dir / "email_summary.md").exists()
     assert (output_dir / "run_summary.json").exists()

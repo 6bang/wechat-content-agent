@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -53,6 +54,9 @@ DEFAULT_SCHEDULE = {
     "timezone": "Asia/Shanghai",
     "suggested_publish_time": "18:00",
 }
+FEISHU_SPACER_MARKER = "<FEISHU_SPACER>"
+FEISHU_ARTICLE_LINE_CHARS = 34
+FEISHU_ARTICLE_PARAGRAPH_LINES = 3
 
 STAGE_REPORTS = {
     "topics": {
@@ -136,6 +140,7 @@ STAGE_REPORTS = {
             "topics.md",
             "selected_topic.md",
             "article_selection.md",
+            "feishu_doc_preview.md",
             "visual_layout.md",
             "articles/C/wechat_ready_article.md",
             "articles/E/wechat_ready_article.md",
@@ -720,6 +725,10 @@ def render_email_summary(
     return "\n".join(lines)
 
 
+def render_feishu_doc_preview(markdown_content: str) -> str:
+    return "\n".join(line for line in markdown_content.splitlines() if line.strip() != FEISHU_SPACER_MARKER)
+
+
 def render_feishu_doc_content(
     output_dir: Path,
     calendar_item: dict[str, Any],
@@ -727,55 +736,153 @@ def render_feishu_doc_content(
     suggested_publish_time: str,
     article_results: list[dict[str, Any]] | None = None,
 ) -> str:
-    sections: list[tuple[str, Path]] = [
-        ("一、今日3个选题", "topics.md"),
-        ("二、主编评估结果", "selected_topic.md"),
-        ("三、三篇文章人工选择清单", "article_selection.md"),
-    ]
-    if article_results:
-        for result in article_results:
-            topic = result["topic"]
-            base = Path("articles") / topic.layer
-            sections.extend(
-                [
-                    (f"{topic.layer}层｜最终定稿", base / "final_article.md"),
-                    (f"{topic.layer}层｜可复制公众号正文", base / "wechat_ready_article.md"),
-                    (f"{topic.layer}层｜发布包", base / "publish_package.md"),
-                    (f"{topic.layer}层｜视觉排版方案", base / "visual_layout.md"),
-                ]
-            )
-    else:
-        sections.extend(
-            [
-                ("四、文章大纲与公众号初稿", "draft.md"),
-                ("五、审稿意见", "review.md"),
-                ("六、最终定稿", "final_article.md"),
-                ("七、可复制公众号正文", "wechat_ready_article.md"),
-                ("八、发布包", "publish_package.md"),
-            ]
-        )
-    lines = [
-        f"# {calendar_item['date']}｜C/E/S三篇公众号内容包",
-        "",
+    article_results = article_results or []
+    paragraphs = [
+        f"【{calendar_item['date']}｜C/E/S三篇公众号内容包】",
         "【公众号内容协作文档】",
-        "",
         f"- 日期：{calendar_item['date']}",
         f"- 栏目：{calendar_item.get('code')}｜{calendar_item.get('column')}",
         f"- 主编推荐：《{package.title}》",
         f"- 建议发布时间：今天{suggested_publish_time}",
         "- 当前状态：待老板/主编从C/E/S三篇中选择发布稿",
-        "",
-        "## 人工确认发布规则",
-        "",
+        "【人工确认发布规则】",
         "- 老板/主编回复：发C / 发E / 发S / 修改",
         "- 运营回复：已排版 / 待排版",
         "- 老板回复：可发 / 暂缓",
+        "【阅读排版说明】",
+        "以下三篇候选稿已按公众号阅读节奏重新排版：每段尽量控制在手机端3行以内，换段留一行空白，三篇文章之间留5行，方便主编和老板在飞书里直接阅读。",
     ]
-    for title, filename in sections:
-        path = output_dir / filename
-        content = path.read_text(encoding="utf-8").strip() if path.exists() else "本文件尚未生成。"
-        lines.extend(["", f"## {title}", "", content])
-    return "\n".join(lines)
+    if article_results:
+        paragraphs.extend(["【三篇候选稿件｜连续阅读版】"])
+        for index, result in enumerate(article_results):
+            topic = result["topic"]
+            article_output_dir = output_dir / "articles" / topic.layer
+            article_body = read_output_text(article_output_dir / "wechat_ready_article.md")
+            title = result["package"].title
+            paragraphs.extend(
+                [
+                    f"【{topic.layer}层｜{topic.layer_name}】",
+                    f"《{title}》",
+                    f"目标用户：{topic.target_user}",
+                    f"主编建议：{'优先发布' if topic.layer == package.selected_layer else '候选备选'}",
+                    *format_article_for_feishu(article_body),
+                ]
+            )
+            if index < len(article_results) - 1:
+                paragraphs.extend(feishu_spacer_blocks(5))
+
+        paragraphs.extend(
+            [
+                "【发布与协作文件索引】",
+                "以下文件用于运营排版、同步公众号草稿箱和人工确认，不再穿插到正文中，避免飞书阅读版显得杂乱。",
+                f"- 选题清单：{Path('outputs') / calendar_item['date'] / 'topics.md'}",
+                f"- 主编评估：{Path('outputs') / calendar_item['date'] / 'selected_topic.md'}",
+                f"- 三篇选择清单：{Path('outputs') / calendar_item['date'] / 'article_selection.md'}",
+            ]
+        )
+        for result in article_results:
+            topic = result["topic"]
+            layer_dir = Path("outputs") / calendar_item["date"] / "articles" / topic.layer
+            paragraphs.extend(
+                [
+                    f"【{topic.layer}层文件】",
+                    f"- 可复制公众号正文：{layer_dir / 'wechat_ready_article.md'}",
+                    f"- 完整终稿：{layer_dir / 'final_article.md'}",
+                    f"- 发布包：{layer_dir / 'publish_package.md'}",
+                    f"- 视觉排版方案：{layer_dir / 'visual_layout.md'}",
+                    f"- 配图素材目录：{layer_dir / 'visual_assets'}",
+                    f"- 同步草稿箱命令：python src/sync_wechat_draft.py --date {calendar_item['date']} --layer {topic.layer}",
+                ]
+            )
+    else:
+        paragraphs.extend(
+            [
+                "【今日主推稿件】",
+                *format_article_for_feishu(read_output_text(output_dir / "wechat_ready_article.md")),
+                "【发布与协作文件索引】",
+                f"- 可复制公众号正文：{Path('outputs') / calendar_item['date'] / 'wechat_ready_article.md'}",
+                f"- 完整终稿：{Path('outputs') / calendar_item['date'] / 'final_article.md'}",
+                f"- 发布包：{Path('outputs') / calendar_item['date'] / 'publish_package.md'}",
+                f"- 视觉排版方案：{Path('outputs') / calendar_item['date'] / 'visual_layout.md'}",
+            ]
+        )
+
+    return "\n\n".join(paragraphs)
+
+
+def read_output_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8").strip() if path.exists() else "本文件尚未生成。"
+
+
+def feishu_spacer_blocks(count: int) -> list[str]:
+    return [FEISHU_SPACER_MARKER for _ in range(count)]
+
+
+def format_article_for_feishu(markdown_text: str) -> list[str]:
+    paragraphs: list[str] = []
+    for block in article_blocks(markdown_text):
+        if not block:
+            continue
+        if block.startswith("# "):
+            paragraphs.append(block[2:].strip())
+            continue
+        if block.startswith("## "):
+            paragraphs.append(block[3:].strip())
+            continue
+        if block.startswith("### "):
+            paragraphs.append(block[4:].strip())
+            continue
+        if is_markdown_list_block(block):
+            paragraphs.append(clean_markdown_block(block))
+            continue
+        paragraphs.extend(split_article_paragraph(clean_markdown_block(block)))
+    return paragraphs
+
+
+def article_blocks(markdown_text: str) -> list[str]:
+    normalized = markdown_text.replace("\r\n", "\n").replace("\r", "\n")
+    raw_blocks = re.split(r"\n{2,}", normalized)
+    return [block.strip() for block in raw_blocks if block.strip()]
+
+
+def is_markdown_list_block(block: str) -> bool:
+    return all(line.strip().startswith("- ") or re.match(r"^\d+[.、]\s+", line.strip()) for line in block.splitlines())
+
+
+def clean_markdown_block(block: str) -> str:
+    text = re.sub(r"^\s{0,3}[-*]\s+", "• ", block, flags=re.MULTILINE)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    return text.strip()
+
+
+def split_article_paragraph(text: str) -> list[str]:
+    max_chars = FEISHU_ARTICLE_LINE_CHARS * FEISHU_ARTICLE_PARAGRAPH_LINES
+    sentences = split_sentences(text)
+    chunks: list[str] = []
+    current = ""
+    for sentence in sentences:
+        if current and len(current) + len(sentence) > max_chars:
+            chunks.append(current.strip())
+            current = sentence
+        else:
+            current = f"{current}{sentence}"
+    if current.strip():
+        chunks.append(current.strip())
+
+    refined: list[str] = []
+    for chunk in chunks:
+        if len(chunk) <= max_chars + 12:
+            refined.append(chunk)
+            continue
+        refined.extend(chunk[index : index + max_chars].strip() for index in range(0, len(chunk), max_chars))
+    return [chunk for chunk in refined if chunk]
+
+
+def split_sentences(text: str) -> list[str]:
+    compact = re.sub(r"\s+", "", text.strip())
+    if not compact:
+        return []
+    return [match.group(0) for match in re.finditer(r".+?[。！？；]|.+$", compact)]
 
 
 def build_run_summary(
@@ -802,6 +909,7 @@ def build_run_summary(
         "selected_topic": decision.selected_topic.title,
         "article_title": package.title,
         "article_count": len(article_results) or 1,
+        "feishu_doc_preview": str(Path("outputs") / publish_date / "feishu_doc_preview.md"),
         "articles": [
             {
                 "layer": result["topic"].layer,
@@ -1094,15 +1202,17 @@ def _run_daily_pipeline_impl(
             completed_stage=stage,
         )
 
+    feishu_doc_content = render_feishu_doc_content(
+        output_dir=output_dir,
+        calendar_item=calendar_item,
+        package=package,
+        suggested_publish_time=suggested_publish_time,
+        article_results=article_results,
+    )
+    save_article(output_dir / "feishu_doc_preview.md", render_feishu_doc_preview(feishu_doc_content))
     feishu_doc_result = create_feishu_doc_from_markdown(
         title=f"{publish_date}｜C/E/S三篇公众号内容包｜主推{package.title}",
-        markdown_content=render_feishu_doc_content(
-            output_dir=output_dir,
-            calendar_item=calendar_item,
-            package=package,
-            suggested_publish_time=suggested_publish_time,
-            article_results=article_results,
-        ),
+        markdown_content=feishu_doc_content,
     )
     save_article(
         output_dir / "feishu_message.md",
