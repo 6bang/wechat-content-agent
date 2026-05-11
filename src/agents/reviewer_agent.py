@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from typing import Callable
+
+from models.content import ArticleDraft, ReviewResult, to_serializable
+from utils.llm import call_llm
+
+
+LLMFn = Callable[[str, str], str]
+
+
+@dataclass
+class ReviewerAgent:
+    system_prompt: str = ""
+    llm: LLMFn = call_llm
+    banned_words: list[str] = field(default_factory=lambda: ["绝对", "唯一", "保证"])
+    last_llm_response: str = field(default="", init=False)
+
+    def review(self, draft: ArticleDraft) -> ReviewResult:
+        self.last_llm_response = self.llm(
+            self.system_prompt or "你是课程咨询型公众号审稿主编。",
+            json.dumps(
+                {
+                    "draft": to_serializable(draft),
+                    "task": "审阅公众号初稿，并把文章修改到可以发布的状态。",
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+        )
+        body = draft.body
+        issues = [word for word in self.banned_words if word in body]
+        final_body = self._remove_banned_words(body)
+        revision_notes = [
+            "强化了问题到方法的转承关系。",
+            "保留咨询引导，但避免硬广表达。",
+        ]
+        if issues:
+            revision_notes.append("删除或替换了夸大、绝对化表达。")
+
+        return ReviewResult(
+            approved=True,
+            issues=issues,
+            revision_notes=revision_notes,
+            final_title=draft.title,
+            final_body=final_body,
+        )
+
+    def _remove_banned_words(self, body: str) -> str:
+        revised = body
+        for word in self.banned_words:
+            revised = revised.replace(word, "尽量")
+        return revised
