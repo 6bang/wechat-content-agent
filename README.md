@@ -175,6 +175,28 @@ FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/...
 
 飞书消息会包含“公众号”关键词，避免关键词安全设置拦截。发送失败只打印日志，不中断主流程。
 
+如果群里已经拉了多个 Agent 机器人，可以给每个角色单独配置 Webhook：
+
+```env
+FEISHU_TOPIC_WEBHOOK_URL=选题策划Agent机器人Webhook
+FEISHU_EDITOR_WEBHOOK_URL=内容主编Agent机器人Webhook
+FEISHU_WRITER_WEBHOOK_URL=内容编辑Agent机器人Webhook
+FEISHU_REVIEWER_WEBHOOK_URL=审稿Agent机器人Webhook
+FEISHU_PUBLISHER_WEBHOOK_URL=新媒体运营Agent机器人Webhook
+FEISHU_CONTROLLER_WEBHOOK_URL=总控Agent机器人Webhook
+```
+
+汇报对应关系：
+
+- 选题策划完成：`FEISHU_TOPIC_WEBHOOK_URL`
+- 主编评估完成：`FEISHU_EDITOR_WEBHOOK_URL`
+- 大纲完成、初稿完成：`FEISHU_WRITER_WEBHOOK_URL`
+- 审稿定稿完成：`FEISHU_REVIEWER_WEBHOOK_URL`
+- 发布包完成：`FEISHU_PUBLISHER_WEBHOOK_URL`
+- 今日内容包完成、最终汇总通知：`FEISHU_CONTROLLER_WEBHOOK_URL`
+
+如果某个专属 Webhook 没配置，系统会自动退回 `FEISHU_WEBHOOK_URL`。
+
 ## 飞书协作文档
 
 如果开启飞书文档，系统会在每天内容包生成后自动创建一份飞书文档，把以下内容写进去：
@@ -314,6 +336,12 @@ MODEL
 ENABLE_FEISHU
 ENABLE_FEISHU_STAGE_REPORT
 FEISHU_WEBHOOK_URL
+FEISHU_TOPIC_WEBHOOK_URL
+FEISHU_EDITOR_WEBHOOK_URL
+FEISHU_WRITER_WEBHOOK_URL
+FEISHU_REVIEWER_WEBHOOK_URL
+FEISHU_PUBLISHER_WEBHOOK_URL
+FEISHU_CONTROLLER_WEBHOOK_URL
 ENABLE_FEISHU_DOC
 FEISHU_APP_ID
 FEISHU_APP_SECRET

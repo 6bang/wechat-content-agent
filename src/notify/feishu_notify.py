@@ -13,6 +13,16 @@ from utils.llm import load_env
 
 KEYWORD = "公众号"
 DEFAULT_TIMEZONE = "Asia/Shanghai"
+DEFAULT_WEBHOOK_ENV = "FEISHU_WEBHOOK_URL"
+CONTROLLER_WEBHOOK_ENV = "FEISHU_CONTROLLER_WEBHOOK_URL"
+ROLE_WEBHOOK_ENVS = {
+    "选题策划 Agent": "FEISHU_TOPIC_WEBHOOK_URL",
+    "内容主编 Agent": "FEISHU_EDITOR_WEBHOOK_URL",
+    "内容编辑 Agent": "FEISHU_WRITER_WEBHOOK_URL",
+    "审稿 Agent": "FEISHU_REVIEWER_WEBHOOK_URL",
+    "新媒体运营 Agent": "FEISHU_PUBLISHER_WEBHOOK_URL",
+    "总控 Agent": CONTROLLER_WEBHOOK_ENV,
+}
 
 
 def is_feishu_enabled() -> bool:
@@ -39,7 +49,7 @@ def notify_feishu_from_output(output_dir: Path) -> bool:
     if KEYWORD not in content:
         content = f"{KEYWORD}通知\n\n{content}"
 
-    return send_feishu_text(content)
+    return send_feishu_text(content, webhook_env=CONTROLLER_WEBHOOK_ENV)
 
 
 def send_feishu_stage_report(
@@ -67,7 +77,7 @@ def send_feishu_stage_report(
         output_files=output_files,
         next_step=next_step,
     )
-    return send_feishu_text(content)
+    return send_feishu_text(content, webhook_env=webhook_env_for_role(role_name))
 
 
 def send_feishu_failure_report(
@@ -103,7 +113,7 @@ def send_feishu_failure_report(
             "请查看 GitHub Actions 日志，修复后手动重新运行 workflow。",
         ]
     )
-    return send_feishu_text(content)
+    return send_feishu_text(content, webhook_env=webhook_env_for_role(role_name))
 
 
 def build_stage_report_message(
@@ -146,11 +156,24 @@ def extract_date_from_output_files(output_files: list[str]) -> str:
     return datetime.now(ZoneInfo(DEFAULT_TIMEZONE)).date().isoformat()
 
 
-def send_feishu_text(content: str) -> bool:
+def webhook_env_for_role(role_name: str) -> str:
+    return ROLE_WEBHOOK_ENVS.get(role_name, DEFAULT_WEBHOOK_ENV)
+
+
+def get_feishu_webhook_url(webhook_env: str | None = None) -> tuple[str, str]:
     load_env()
-    webhook_url = os.getenv("FEISHU_WEBHOOK_URL", "").strip()
+    selected_env = webhook_env or DEFAULT_WEBHOOK_ENV
+    webhook_url = os.getenv(selected_env, "").strip()
+    if not webhook_url and selected_env != DEFAULT_WEBHOOK_ENV:
+        webhook_url = os.getenv(DEFAULT_WEBHOOK_ENV, "").strip()
+        selected_env = DEFAULT_WEBHOOK_ENV
+    return selected_env, webhook_url
+
+
+def send_feishu_text(content: str, webhook_env: str | None = None) -> bool:
+    selected_env, webhook_url = get_feishu_webhook_url(webhook_env)
     if not webhook_url:
-        print("Feishu notification skipped: FEISHU_WEBHOOK_URL is not configured.")
+        print(f"Feishu notification skipped: {selected_env} is not configured.")
         return False
 
     payload = {
@@ -179,7 +202,7 @@ def send_feishu_text(content: str) -> bool:
         print(f"Feishu notification failed: {exc}")
         return False
 
-    print("Feishu notification sent.")
+    print(f"Feishu notification sent via {selected_env}.")
     return True
 
 
