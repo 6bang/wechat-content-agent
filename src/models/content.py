@@ -170,6 +170,38 @@ class PublishPackage:
         return ["电商运营", "电商管理", self.selected_layer, "流程化组织"]
 
 
+@dataclass
+class VisualAsset:
+    filename: str
+    asset_type: str
+    title: str
+    purpose: str
+    placement: str
+    prompt: str
+    caption: str
+    alt_text: str
+    notes: str
+
+
+@dataclass
+class VisualLayoutPackage:
+    title: str
+    selected_layer: str
+    cover_direction: str
+    article_tone: str
+    typography_rules: list[str]
+    color_rules: list[str]
+    section_layout: list[str]
+    visual_assets: list[VisualAsset]
+    feishu_doc_notes: list[str]
+    wechat_layout_notes: list[str]
+    image_generation_notes: list[str]
+
+    @property
+    def asset_filenames(self) -> list[str]:
+        return [asset.filename for asset in self.visual_assets]
+
+
 def to_serializable(value: Any) -> Any:
     if is_dataclass(value):
         return {key: to_serializable(item) for key, item in asdict(value).items()}

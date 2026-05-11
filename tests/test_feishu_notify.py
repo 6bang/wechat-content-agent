@@ -14,6 +14,7 @@ from notify.feishu_notify import get_feishu_webhook_url, webhook_env_for_role
 def test_webhook_env_for_role() -> None:
     assert webhook_env_for_role("选题策划 Agent") == "FEISHU_TOPIC_WEBHOOK_URL"
     assert webhook_env_for_role("内容编辑 Agent") == "FEISHU_WRITER_WEBHOOK_URL"
+    assert webhook_env_for_role("视觉排版 Agent") == "FEISHU_VISUAL_WEBHOOK_URL"
     assert webhook_env_for_role("总控 Agent") == "FEISHU_CONTROLLER_WEBHOOK_URL"
     assert webhook_env_for_role("未知 Agent") == "FEISHU_WEBHOOK_URL"
 

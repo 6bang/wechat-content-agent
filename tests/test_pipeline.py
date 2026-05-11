@@ -58,6 +58,7 @@ suggested_publish_time: "18:00"
         "writer_agent.md",
         "reviewer_agent.md",
         "publisher_agent.md",
+        "visual_designer_agent.md",
     ]:
         (root / "prompts" / name).write_text("mock prompt", encoding="utf-8")
 
@@ -81,6 +82,8 @@ suggested_publish_time: "18:00"
     assert (output_dir / "final_article.md").exists()
     assert (output_dir / "wechat_ready_article.md").exists()
     assert (output_dir / "publish_package.md").exists()
+    assert (output_dir / "visual_layout.md").exists()
+    assert (output_dir / "visual_assets" / "cover.svg").exists()
     assert (output_dir / "feishu_message.md").exists()
     assert (output_dir / "email_summary.md").exists()
     assert (output_dir / "run_summary.json").exists()
@@ -93,4 +96,6 @@ suggested_publish_time: "18:00"
         assert (article_dir / "final_article.md").exists()
         assert (article_dir / "wechat_ready_article.md").exists()
         assert (article_dir / "publish_package.md").exists()
+        assert (article_dir / "visual_layout.md").exists()
+        assert (article_dir / "visual_assets" / "cover.svg").exists()
         assert len((article_dir / "wechat_ready_article.md").read_text(encoding="utf-8")) >= 2200

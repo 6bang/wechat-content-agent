@@ -40,6 +40,7 @@
 - `内容编辑 Agent`: 分别为 C/E/S 三个选题生成文章大纲和公众号初稿。
 - `审稿 Agent`: 分别审阅 C/E/S 三篇文章，从标题、开头、逻辑、案例、方法、专业度、转化和风险角度审稿定稿。
 - `新媒体运营 Agent`: 分别为 C/E/S 三篇文章生成标题、摘要、封面、朋友圈、社群、私聊、评论区问题和复盘模板。
+- `视觉排版 Agent`: 分别为 C/E/S 三篇文章生成封面方向、正文配图清单、流程图、看板图、检查清单、结尾引导卡和公众号排版建议。
 - `总控 Agent / daily_pipeline`: 串联全流程，保存 outputs，创建飞书协作文档，触发飞书与邮箱通知。
 
 ## 主编评分模型
@@ -73,13 +74,15 @@
 12. 飞书汇报：审稿定稿完成
 13. 生成 C/E/S 三篇发布包
 14. 飞书汇报：发布包完成
-15. 生成 `article_selection.md`、三篇 `wechat_ready_article.md`、`email_summary.md`
-16. 如果开启飞书文档，创建飞书协作文档并写入完整内容包
-17. 生成 `feishu_message.md`，其中包含飞书文档链接
-18. 飞书汇报：今日内容包完成
-19. 如果开启邮箱，发送邮箱备份
-20. GitHub Actions 上传 `outputs/` artifact
-21. 等待人工确认发布
+15. 视觉排版 Agent 生成 C/E/S 三篇视觉排版方案和原创 SVG 示意图
+16. 飞书汇报：视觉排版完成
+17. 生成 `article_selection.md`、三篇 `wechat_ready_article.md`、`email_summary.md`
+18. 如果开启飞书文档，创建飞书协作文档并写入完整内容包
+19. 生成 `feishu_message.md`，其中包含飞书文档链接
+20. 飞书汇报：今日内容包完成
+21. 如果开启邮箱，发送邮箱备份
+22. GitHub Actions 上传 `outputs/` artifact
+23. 等待人工确认发布
 
 ## 输出文件
 
@@ -95,6 +98,8 @@ review.md
 final_article.md
 wechat_ready_article.md
 publish_package.md
+visual_layout.md
+visual_assets/
 feishu_message.md
 email_summary.md
 run_summary.json
@@ -103,19 +108,25 @@ articles/C/review.md
 articles/C/final_article.md
 articles/C/wechat_ready_article.md
 articles/C/publish_package.md
+articles/C/visual_layout.md
+articles/C/visual_assets/
 articles/E/draft.md
 articles/E/review.md
 articles/E/final_article.md
 articles/E/wechat_ready_article.md
 articles/E/publish_package.md
+articles/E/visual_layout.md
+articles/E/visual_assets/
 articles/S/draft.md
 articles/S/review.md
 articles/S/final_article.md
 articles/S/wechat_ready_article.md
 articles/S/publish_package.md
+articles/S/visual_layout.md
+articles/S/visual_assets/
 ```
 
-顶层 `wechat_ready_article.md`、`final_article.md`、`publish_package.md` 保留主编推荐稿，兼容旧流程。真正的三篇候选稿在 `articles/C`、`articles/E`、`articles/S` 目录里。
+顶层 `wechat_ready_article.md`、`final_article.md`、`publish_package.md`、`visual_layout.md` 保留主编推荐稿，兼容旧流程。真正的三篇候选稿在 `articles/C`、`articles/E`、`articles/S` 目录里。
 
 ## 本地运行
 
@@ -183,6 +194,7 @@ FEISHU_EDITOR_WEBHOOK_URL=内容主编Agent机器人Webhook
 FEISHU_WRITER_WEBHOOK_URL=内容编辑Agent机器人Webhook
 FEISHU_REVIEWER_WEBHOOK_URL=审稿Agent机器人Webhook
 FEISHU_PUBLISHER_WEBHOOK_URL=新媒体运营Agent机器人Webhook
+FEISHU_VISUAL_WEBHOOK_URL=视觉排版Agent机器人Webhook
 FEISHU_CONTROLLER_WEBHOOK_URL=总控Agent机器人Webhook
 ```
 
@@ -193,6 +205,7 @@ FEISHU_CONTROLLER_WEBHOOK_URL=总控Agent机器人Webhook
 - 大纲完成、初稿完成：`FEISHU_WRITER_WEBHOOK_URL`
 - 审稿定稿完成：`FEISHU_REVIEWER_WEBHOOK_URL`
 - 发布包完成：`FEISHU_PUBLISHER_WEBHOOK_URL`
+- 视觉排版完成：`FEISHU_VISUAL_WEBHOOK_URL`
 - 今日内容包完成、最终汇总通知：`FEISHU_CONTROLLER_WEBHOOK_URL`
 
 如果某个专属 Webhook 没配置，系统会自动退回 `FEISHU_WEBHOOK_URL`。
@@ -208,6 +221,7 @@ FEISHU_CONTROLLER_WEBHOOK_URL=总控Agent机器人Webhook
 - 最终定稿
 - 可复制公众号正文
 - 发布包
+- 视觉排版方案和配图清单
 - 人工确认发布规则
 
 需要配置：
@@ -341,6 +355,7 @@ FEISHU_EDITOR_WEBHOOK_URL
 FEISHU_WRITER_WEBHOOK_URL
 FEISHU_REVIEWER_WEBHOOK_URL
 FEISHU_PUBLISHER_WEBHOOK_URL
+FEISHU_VISUAL_WEBHOOK_URL
 FEISHU_CONTROLLER_WEBHOOK_URL
 ENABLE_FEISHU_DOC
 FEISHU_APP_ID

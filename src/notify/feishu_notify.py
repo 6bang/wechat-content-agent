@@ -21,6 +21,7 @@ ROLE_WEBHOOK_ENVS = {
     "内容编辑 Agent": "FEISHU_WRITER_WEBHOOK_URL",
     "审稿 Agent": "FEISHU_REVIEWER_WEBHOOK_URL",
     "新媒体运营 Agent": "FEISHU_PUBLISHER_WEBHOOK_URL",
+    "视觉排版 Agent": "FEISHU_VISUAL_WEBHOOK_URL",
     "总控 Agent": CONTROLLER_WEBHOOK_ENV,
 }
 

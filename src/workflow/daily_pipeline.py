@@ -9,8 +9,16 @@ from agents.editor_in_chief_agent import EditorInChiefAgent
 from agents.publisher_agent import PublisherAgent
 from agents.reviewer_agent import ReviewerAgent
 from agents.topic_agent import TopicAgent
+from agents.visual_designer_agent import VisualDesignerAgent
 from agents.writer_agent import WriterAgent
-from models.content import ArticleDraft, EditorialDecision, PublishPackage, ReviewResult, to_serializable
+from models.content import (
+    ArticleDraft,
+    EditorialDecision,
+    PublishPackage,
+    ReviewResult,
+    VisualLayoutPackage,
+    to_serializable,
+)
 from notify.email_notify import send_email_backup
 from notify.feishu_doc import create_feishu_doc_from_markdown
 from notify.feishu_notify import (
@@ -20,6 +28,7 @@ from notify.feishu_notify import (
 )
 from storage.save_article import save_article
 from storage.save_json import save_json
+from storage.render_visual_assets import save_visual_assets
 from utils.llm import call_llm
 
 try:
@@ -30,7 +39,7 @@ except ImportError:  # pragma: no cover
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 WEEKDAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-STAGE_ORDER = ["topics", "editor", "outline", "draft", "review", "publish", "all"]
+STAGE_ORDER = ["topics", "editor", "outline", "draft", "review", "publish", "visual", "all"]
 
 DEFAULT_LAYERS = {
     "layers": {
@@ -98,18 +107,36 @@ STAGE_REPORTS = {
         "status": "已完成",
         "summary": "已为C/E/S三篇文章生成公众号标题、摘要、封面文案、朋友圈文案、社群文案、私聊话术、评论区问题和数据复盘表。",
         "output_files": ["article_selection.md", "articles/C/publish_package.md", "articles/E/publish_package.md", "articles/S/publish_package.md"],
-        "next_step": "请老板/主编从C/E/S三篇中选择一篇进入公众号草稿箱和人工发布流程。",
+        "next_step": "视觉排版 Agent 将为C/E/S三篇文章生成配图清单、封面方向、排版方案和原创SVG示意图。",
+    },
+    "visual": {
+        "stage_name": "视觉排版完成",
+        "role_name": "视觉排版 Agent",
+        "task_name": "生成C/E/S三篇文章视觉排版方案",
+        "status": "已完成",
+        "summary": "已为C/E/S三篇文章生成封面方向、正文配图清单、流程图、看板图、检查清单、结尾引导卡和公众号排版建议。",
+        "output_files": [
+            "visual_layout.md",
+            "articles/C/visual_layout.md",
+            "articles/E/visual_layout.md",
+            "articles/S/visual_layout.md",
+            "articles/C/visual_assets/cover.svg",
+            "articles/E/visual_assets/cover.svg",
+            "articles/S/visual_assets/cover.svg",
+        ],
+        "next_step": "请老板/主编从C/E/S三篇中选择一篇，运营根据视觉排版方案进入公众号草稿箱和人工发布流程。",
     },
     "complete": {
         "stage_name": "今日内容包完成",
         "role_name": "总控 Agent",
         "task_name": "完成今日公众号内容生产流水线",
         "status": "待人工发布",
-        "summary": "今日公众号内容包已全部生成，包含C/E/S三篇文章、主编推荐、初稿、审稿、终稿、可复制公众号正文、发布包、飞书消息和邮件摘要。",
+        "summary": "今日公众号内容包已全部生成，包含C/E/S三篇文章、主编推荐、初稿、审稿、终稿、可复制公众号正文、发布包、视觉排版方案、飞书消息和邮件摘要。",
         "output_files": [
             "topics.md",
             "selected_topic.md",
             "article_selection.md",
+            "visual_layout.md",
             "articles/C/wechat_ready_article.md",
             "articles/E/wechat_ready_article.md",
             "articles/S/wechat_ready_article.md",
@@ -178,7 +205,7 @@ def output_file_paths(publish_date: str, filenames: list[str]) -> list[str]:
 
 def should_report_stage(target_stage: str, report_stage: str) -> bool:
     if report_stage == "complete":
-        return target_stage in {"publish", "all"}
+        return target_stage in {"visual", "all"}
     return target_stage == "all" or target_stage == report_stage
 
 
@@ -461,6 +488,58 @@ def render_publish_package(package: PublishPackage) -> str:
     )
 
 
+def render_visual_layout(visual_layout: VisualLayoutPackage) -> str:
+    asset_lines: list[str] = []
+    for asset in visual_layout.visual_assets:
+        asset_lines.extend(
+            [
+                f"### {asset.asset_type}｜{asset.title}",
+                "",
+                f"- 文件名: visual_assets/{asset.filename}",
+                f"- 用途: {asset.purpose}",
+                f"- 插入位置: {asset.placement}",
+                f"- 图注: {asset.caption}",
+                f"- 替代文本: {asset.alt_text}",
+                f"- 注意事项: {asset.notes}",
+                "",
+                "生成提示词：",
+                asset.prompt,
+                "",
+            ]
+        )
+
+    return "\n".join(
+        [
+            "# 视觉排版方案",
+            "",
+            f"- 文章标题: {visual_layout.title}",
+            f"- 内容层级: {visual_layout.selected_layer}层",
+            f"- 封面方向: {visual_layout.cover_direction}",
+            f"- 整体风格: {visual_layout.article_tone}",
+            "",
+            "## 字体层级建议",
+            *[f"- {item}" for item in visual_layout.typography_rules],
+            "",
+            "## 色彩建议",
+            *[f"- {item}" for item in visual_layout.color_rules],
+            "",
+            "## 正文排版结构",
+            *[f"- {item}" for item in visual_layout.section_layout],
+            "",
+            "## 配图清单",
+            *asset_lines,
+            "## 飞书文档排版建议",
+            *[f"- {item}" for item in visual_layout.feishu_doc_notes],
+            "",
+            "## 微信公众号后台排版建议",
+            *[f"- {item}" for item in visual_layout.wechat_layout_notes],
+            "",
+            "## 图片生成与发布注意事项",
+            *[f"- {item}" for item in visual_layout.image_generation_notes],
+        ]
+    )
+
+
 def render_feishu_message(
     package: PublishPackage,
     calendar_item: dict[str, Any],
@@ -507,9 +586,10 @@ def render_feishu_message(
             "请运营执行：",
             "1. 查看 article_selection.md 选择C/E/S其中一篇",
             "2. 根据对应 publish_package.md 准备标题、摘要、封面文案",
-            "3. 用 `python src/sync_wechat_draft.py --date 日期 --layer C/E/S` 同步到公众号草稿箱",
-            "4. 参考爆文排版：短段落、强小标题、工具截图、领取资料二维码",
-            "5. 发布前请老板/主编确认",
+            "3. 根据对应 visual_layout.md 插入封面、流程图、看板图、检查清单和结尾引导卡",
+            "4. 用 `python src/sync_wechat_draft.py --date 日期 --layer C/E/S` 同步到公众号草稿箱",
+            "5. 参考爆文排版：短段落、强小标题、工具截图、领取资料二维码",
+            "6. 发布前请老板/主编确认",
             "",
             "选稿清单：",
             str(selection_path),
@@ -534,7 +614,7 @@ def render_feishu_message(
             "可复制到微信的提醒文案：",
             "老板，今日C/E/S三篇公众号候选稿已生成，主编推荐：",
             f"{package.selected_layer}层｜《{package.title}》",
-            "已发到飞书群，请选择今天发布哪一篇。",
+            "已发到飞书群，并生成视觉排版方案，请选择今天发布哪一篇。",
         ]
     )
 
@@ -551,6 +631,7 @@ def render_feishu_article_paths(article_results: list[dict[str, Any]], publish_d
                 f"- {topic.layer}层｜《{result['package'].title}》",
                 f"  正文：{layer_dir / 'wechat_ready_article.md'}",
                 f"  发布包：{layer_dir / 'publish_package.md'}",
+                f"  视觉排版：{layer_dir / 'visual_layout.md'}",
             ]
         )
     lines.append("")
@@ -591,6 +672,8 @@ def render_article_selection(
                 f"- 可复制正文: {layer_dir / 'wechat_ready_article.md'}",
                 f"- 完整终稿: {layer_dir / 'final_article.md'}",
                 f"- 发布包: {layer_dir / 'publish_package.md'}",
+                f"- 视觉排版方案: {layer_dir / 'visual_layout.md'}",
+                f"- 配图素材目录: {layer_dir / 'visual_assets'}",
                 f"- 同步草稿箱命令: `python src/sync_wechat_draft.py --date {calendar_item['date']} --layer {topic.layer}`",
             ]
         )
@@ -631,6 +714,7 @@ def render_email_summary(
                     f"- {topic.layer}层｜{result['package'].title}",
                     f"  正文: {layer_dir / 'wechat_ready_article.md'}",
                     f"  发布包: {layer_dir / 'publish_package.md'}",
+                    f"  视觉排版: {layer_dir / 'visual_layout.md'}",
                 ]
             )
     return "\n".join(lines)
@@ -657,6 +741,7 @@ def render_feishu_doc_content(
                     (f"{topic.layer}层｜最终定稿", base / "final_article.md"),
                     (f"{topic.layer}层｜可复制公众号正文", base / "wechat_ready_article.md"),
                     (f"{topic.layer}层｜发布包", base / "publish_package.md"),
+                    (f"{topic.layer}层｜视觉排版方案", base / "visual_layout.md"),
                 ]
             )
     else:
@@ -724,6 +809,8 @@ def build_run_summary(
                 "title": result["package"].title,
                 "wechat_ready_article": str(Path("outputs") / publish_date / "articles" / result["topic"].layer / "wechat_ready_article.md"),
                 "publish_package": str(Path("outputs") / publish_date / "articles" / result["topic"].layer / "publish_package.md"),
+                "visual_layout": str(Path("outputs") / publish_date / "articles" / result["topic"].layer / "visual_layout.md"),
+                "visual_assets": str(Path("outputs") / publish_date / "articles" / result["topic"].layer / "visual_assets"),
             }
             for result in article_results
         ],
@@ -946,6 +1033,67 @@ def _run_daily_pipeline_impl(
     package = recommended["package"]
     save_article(output_dir / "publish_package.md", render_publish_package(package))
     save_article(output_dir / "article_selection.md", render_article_selection(article_results, decision, calendar_item))
+    report_stage(stage, "publish", publish_date)
+    if stage == "publish":
+        return build_pipeline_result(
+            publish_date,
+            output_dir,
+            calendar_item,
+            topics,
+            decision=decision,
+            draft=draft,
+            review=review,
+            package=package,
+            article_results=article_results,
+            llm_outputs={
+                "topic_agent": topic_agent.last_llm_response,
+                "editor_in_chief_agent": editor_agent.last_llm_response,
+                "writer_agent": writer_agent.last_llm_response,
+                "reviewer_agent": reviewer_agent.last_llm_response,
+                "publisher_agent": publisher_agent.last_llm_response,
+            },
+            completed_stage=stage,
+        )
+
+    visual_agent = VisualDesignerAgent(
+        system_prompt=load_prompt(root_dir, "visual_designer_agent.md"),
+        llm=llm,
+    )
+    for result in article_results:
+        visual_layout = visual_agent.design_layout(result["topic"], result["review"], result["package"])
+        result["visual_layout"] = visual_layout
+        result["visual_assets"] = save_visual_assets(result["output_dir"], visual_layout)
+        save_article(result["output_dir"] / "visual_layout.md", render_visual_layout(visual_layout))
+
+    recommended = get_recommended_article_result(article_results, decision)
+    visual_layout = recommended["visual_layout"]
+    save_visual_assets(output_dir, visual_layout)
+    save_article(output_dir / "visual_layout.md", render_visual_layout(visual_layout))
+    save_article(output_dir / "article_selection.md", render_article_selection(article_results, decision, calendar_item))
+    report_stage(stage, "visual", publish_date)
+    if stage == "visual":
+        return build_pipeline_result(
+            publish_date,
+            output_dir,
+            calendar_item,
+            topics,
+            decision=decision,
+            draft=draft,
+            review=review,
+            package=package,
+            visual_layout=visual_layout,
+            article_results=article_results,
+            llm_outputs={
+                "topic_agent": topic_agent.last_llm_response,
+                "editor_in_chief_agent": editor_agent.last_llm_response,
+                "writer_agent": writer_agent.last_llm_response,
+                "reviewer_agent": reviewer_agent.last_llm_response,
+                "publisher_agent": publisher_agent.last_llm_response,
+                "visual_designer_agent": visual_agent.last_llm_response,
+            },
+            completed_stage=stage,
+        )
+
     feishu_doc_result = create_feishu_doc_from_markdown(
         title=f"{publish_date}｜C/E/S三篇公众号内容包｜主推{package.title}",
         markdown_content=render_feishu_doc_content(
@@ -977,7 +1125,6 @@ def _run_daily_pipeline_impl(
         article_results,
     )
     save_article(output_dir / "email_summary.md", email_summary)
-    report_stage(stage, "publish", publish_date)
     report_stage(stage, "complete", publish_date)
     feishu_sent = notify_feishu_from_output(output_dir)
     email_sent = send_email_backup(
@@ -988,9 +1135,11 @@ def _run_daily_pipeline_impl(
             output_dir / "wechat_ready_article.md",
             output_dir / "final_article.md",
             output_dir / "publish_package.md",
+            output_dir / "visual_layout.md",
             output_dir / "feishu_message.md",
             *(result["output_dir"] / "wechat_ready_article.md" for result in article_results),
             *(result["output_dir"] / "publish_package.md" for result in article_results),
+            *(result["output_dir"] / "visual_layout.md" for result in article_results),
         ],
     )
     save_json(
@@ -1018,6 +1167,7 @@ def _run_daily_pipeline_impl(
         draft=draft,
         review=review,
         package=package,
+        visual_layout=visual_layout,
         article_results=article_results,
         llm_outputs={
             "topic_agent": topic_agent.last_llm_response,
@@ -1025,8 +1175,9 @@ def _run_daily_pipeline_impl(
             "writer_agent": writer_agent.last_llm_response,
             "reviewer_agent": reviewer_agent.last_llm_response,
             "publisher_agent": publisher_agent.last_llm_response,
+            "visual_designer_agent": visual_agent.last_llm_response,
         },
-        completed_stage="publish" if stage == "publish" else "all",
+        completed_stage="all",
     )
 
 
@@ -1039,6 +1190,7 @@ def build_pipeline_result(
     draft: ArticleDraft | None = None,
     review: ReviewResult | None = None,
     package: PublishPackage | None = None,
+    visual_layout: VisualLayoutPackage | None = None,
     article_results: list[dict[str, Any]] | None = None,
     llm_outputs: dict[str, str] | None = None,
     completed_stage: str = "all",
@@ -1052,6 +1204,7 @@ def build_pipeline_result(
         "draft": draft,
         "review": review,
         "publish_package": package,
+        "visual_layout": visual_layout,
         "article_results": article_results or [],
         "llm_outputs": llm_outputs or {},
         "completed_stage": completed_stage,
