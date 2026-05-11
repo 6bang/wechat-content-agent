@@ -22,6 +22,11 @@ jobs:
       ENABLE_FEISHU: ${{ secrets.ENABLE_FEISHU }}
       ENABLE_FEISHU_STAGE_REPORT: ${{ secrets.ENABLE_FEISHU_STAGE_REPORT }}
       FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+      ENABLE_FEISHU_DOC: ${{ secrets.ENABLE_FEISHU_DOC }}
+      FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+      FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+      FEISHU_DOC_FOLDER_TOKEN: ${{ secrets.FEISHU_DOC_FOLDER_TOKEN }}
+      FEISHU_DOC_BASE_URL: ${{ secrets.FEISHU_DOC_BASE_URL }}
       ENABLE_EMAIL: ${{ secrets.ENABLE_EMAIL }}
       SMTP_HOST: ${{ secrets.SMTP_HOST }}
       SMTP_PORT: ${{ secrets.SMTP_PORT }}

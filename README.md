@@ -2,7 +2,7 @@
 
 `wechat-content-agent` 是一个课程咨询型微信公众号内容自动化生产系统，服务电商咨询、管理课程和企业服务业务。
 
-它不是普通写稿工具。第一阶段只负责每天自动生成内容包、飞书群阶段汇报、邮箱备份和 GitHub Actions 定时运行；最终公众号发布必须由主编、老板或运营人工确认后执行。
+它不是普通写稿工具。第一阶段只负责每天自动生成内容包、写入飞书协作文档、飞书群阶段汇报、邮箱备份和 GitHub Actions 定时运行；最终公众号发布必须由主编、老板或运营人工确认后执行。
 
 ## 适合业务
 
@@ -40,7 +40,7 @@
 - `内容编辑 Agent`: 生成文章大纲和公众号初稿。
 - `审稿 Agent`: 从标题、开头、逻辑、案例、方法、专业度、转化和风险角度审稿定稿。
 - `新媒体运营 Agent`: 生成标题、摘要、封面、朋友圈、社群、私聊、评论区问题和复盘模板。
-- `总控 Agent / daily_pipeline`: 串联全流程，保存 outputs，触发飞书与邮箱通知。
+- `总控 Agent / daily_pipeline`: 串联全流程，保存 outputs，创建飞书协作文档，触发飞书与邮箱通知。
 
 ## 主编评分模型
 
@@ -73,11 +73,13 @@
 12. 飞书汇报：审稿定稿完成
 13. 生成发布包
 14. 飞书汇报：发布包完成
-15. 生成 `wechat_ready_article.md`、`feishu_message.md`、`email_summary.md`
-16. 飞书汇报：今日内容包完成
-17. 如果开启邮箱，发送邮箱备份
-18. GitHub Actions 上传 `outputs/` artifact
-19. 等待人工确认发布
+15. 生成 `wechat_ready_article.md`、`email_summary.md`
+16. 如果开启飞书文档，创建飞书协作文档并写入完整内容包
+17. 生成 `feishu_message.md`，其中包含飞书文档链接
+18. 飞书汇报：今日内容包完成
+19. 如果开启邮箱，发送邮箱备份
+20. GitHub Actions 上传 `outputs/` artifact
+21. 等待人工确认发布
 
 ## 输出文件
 
@@ -157,6 +159,37 @@ FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/...
 
 飞书消息会包含“公众号”关键词，避免关键词安全设置拦截。发送失败只打印日志，不中断主流程。
 
+## 飞书协作文档
+
+如果开启飞书文档，系统会在每天内容包生成后自动创建一份飞书文档，把以下内容写进去：
+
+- 今日 3 个选题
+- 主编评估结果
+- 文章大纲和公众号初稿
+- 审稿意见
+- 最终定稿
+- 可复制公众号正文
+- 发布包
+- 人工确认发布规则
+
+需要配置：
+
+```env
+ENABLE_FEISHU_DOC=true
+FEISHU_APP_ID=cli_xxxxxxxxxxxxx
+FEISHU_APP_SECRET=xxxxxxxxxxxxx
+FEISHU_DOC_FOLDER_TOKEN=fldcnxxxxxxxxxxxx
+FEISHU_DOC_BASE_URL=https://your-company.feishu.cn
+```
+
+说明：
+
+- `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET` 来自飞书开放平台的企业自建应用。
+- `FEISHU_DOC_FOLDER_TOKEN` 是飞书文件夹链接里 `/folder/` 后面的那段 token。
+- `FEISHU_DOC_BASE_URL` 是可选项，用于拼出文档链接，例如 `https://你的企业域名.feishu.cn`。如果飞书接口直接返回文档 URL，可以不配。
+- 创建或写入飞书文档失败时，只打印日志并继续发送群通知，不中断主流程。
+- 如果飞书文档创建成功，`feishu_message.md` 和飞书群最终通知里会带上文档链接。
+
 ## 飞书阶段汇报机制
 
 飞书群被当作“公众号内容团队战情室”。每个 Agent 完成后都会汇报：
@@ -218,6 +251,11 @@ MODEL
 ENABLE_FEISHU
 ENABLE_FEISHU_STAGE_REPORT
 FEISHU_WEBHOOK_URL
+ENABLE_FEISHU_DOC
+FEISHU_APP_ID
+FEISHU_APP_SECRET
+FEISHU_DOC_FOLDER_TOKEN
+FEISHU_DOC_BASE_URL
 ENABLE_EMAIL
 SMTP_HOST
 SMTP_PORT
@@ -246,11 +284,12 @@ EMAIL_TO
 人工流程：
 
 1. 系统生成 `wechat_ready_article.md` 和 `publish_package.md`
-2. 飞书群收到“今日内容包完成”
-3. 主编检查终稿并回复 `通过 / 修改`
-4. 运营复制正文到公众号后台并回复 `已排版 / 待排版`
-5. 老板或主编回复 `可发 / 暂缓`
-6. 运营人工发布
+2. 系统创建飞书协作文档，并把链接发到飞书群
+3. 飞书群收到“今日内容包完成”
+4. 主编在飞书文档里检查终稿并回复 `通过 / 修改`
+5. 运营复制正文到公众号后台并回复 `已排版 / 待排版`
+6. 老板或主编回复 `可发 / 暂缓`
+7. 运营人工发布
 
 ## 测试
 
@@ -266,7 +305,6 @@ python3 -m pytest -q
 
 ## 后续升级方向
 
-- 自动创建飞书文档并写入正文和发布包
 - 接入公众号草稿箱，但仍保留人工确认发布
 - 增加行业热点抓取和同行爆文选题池
 - 增加次日 09:00 数据复盘

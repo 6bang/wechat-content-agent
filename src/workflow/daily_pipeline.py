@@ -12,6 +12,7 @@ from agents.topic_agent import TopicAgent
 from agents.writer_agent import WriterAgent
 from models.content import ArticleDraft, EditorialDecision, PublishPackage, ReviewResult, to_serializable
 from notify.email_notify import send_email_backup
+from notify.feishu_doc import create_feishu_doc_from_markdown
 from notify.feishu_notify import (
     notify_feishu_from_output,
     send_feishu_failure_report,
@@ -420,11 +421,23 @@ def render_feishu_message(
     calendar_item: dict[str, Any],
     output_dir: Path,
     suggested_publish_time: str,
+    feishu_doc_result: dict[str, Any] | None = None,
 ) -> str:
     output_path = Path("outputs") / calendar_item["date"]
     wechat_ready_path = output_path / "wechat_ready_article.md"
     final_article_path = output_path / "final_article.md"
     publish_package_path = output_path / "publish_package.md"
+    feishu_doc_result = feishu_doc_result or {}
+    feishu_doc_url = str(feishu_doc_result.get("document_url") or "").strip()
+    feishu_doc_error = str(feishu_doc_result.get("error") or "").strip()
+    if feishu_doc_url:
+        feishu_doc_status = feishu_doc_url
+        if feishu_doc_result.get("written") is False:
+            feishu_doc_status = f"{feishu_doc_url}\n注意：文档已创建，但写入未确认，请同时查看 GitHub Actions artifact 或本地 outputs。"
+    elif feishu_doc_result.get("enabled") is False:
+        feishu_doc_status = "未启用飞书协作文档，请查看 GitHub Actions artifact 或本地 outputs 文件。"
+    else:
+        feishu_doc_status = "未创建成功，请先查看 GitHub Actions artifact 或本地 outputs 文件。"
     return "\n".join(
         [
             "【今日公众号稿件已生成】",
@@ -461,6 +474,14 @@ def render_feishu_message(
             "发布包路径：",
             str(publish_package_path),
             "",
+            "飞书协作文档：",
+            feishu_doc_status,
+            "",
+            *(
+                ["飞书文档异常：", feishu_doc_error, ""]
+                if feishu_doc_error
+                else []
+            ),
             "建议发布时间：",
             f"今天{suggested_publish_time}",
             "",
@@ -487,8 +508,12 @@ def render_email_summary(
     decision: EditorialDecision,
     package: PublishPackage,
     suggested_publish_time: str,
+    feishu_doc_result: dict[str, Any] | None = None,
 ) -> str:
     output_path = Path("outputs") / publish_date
+    feishu_doc_url = ""
+    if feishu_doc_result:
+        feishu_doc_url = str(feishu_doc_result.get("document_url") or "")
     return "\n".join(
         [
             f"# 【公众号今日稿件】{publish_date}｜{package.title}",
@@ -501,8 +526,49 @@ def render_email_summary(
             f"- 建议发布时间: 今天{suggested_publish_time}",
             f"- 可复制公众号正文路径: {output_path / 'wechat_ready_article.md'}",
             f"- 发布包路径: {output_path / 'publish_package.md'}",
+            f"- 飞书协作文档: {feishu_doc_url or '未创建或未启用'}",
         ]
     )
+
+
+def render_feishu_doc_content(
+    output_dir: Path,
+    calendar_item: dict[str, Any],
+    package: PublishPackage,
+    suggested_publish_time: str,
+) -> str:
+    sections = [
+        ("一、今日3个选题", "topics.md"),
+        ("二、主编评估结果", "selected_topic.md"),
+        ("三、文章大纲与公众号初稿", "draft.md"),
+        ("四、审稿意见", "review.md"),
+        ("五、最终定稿", "final_article.md"),
+        ("六、可复制公众号正文", "wechat_ready_article.md"),
+        ("七、发布包", "publish_package.md"),
+    ]
+    lines = [
+        f"# {calendar_item['date']}｜{calendar_item.get('code')}｜{package.title}",
+        "",
+        "【公众号内容协作文档】",
+        "",
+        f"- 日期：{calendar_item['date']}",
+        f"- 栏目：{calendar_item.get('code')}｜{calendar_item.get('column')}",
+        f"- 内容层级：{calendar_item.get('layer')}",
+        f"- 文章标题：《{package.title}》",
+        f"- 建议发布时间：今天{suggested_publish_time}",
+        "- 当前状态：待主编确认 / 待运营排版 / 待老板确认发布",
+        "",
+        "## 人工确认发布规则",
+        "",
+        "- 主编回复：通过 / 修改",
+        "- 运营回复：已排版 / 待排版",
+        "- 老板回复：可发 / 暂缓",
+    ]
+    for title, filename in sections:
+        path = output_dir / filename
+        content = path.read_text(encoding="utf-8").strip() if path.exists() else "本文件尚未生成。"
+        lines.extend(["", f"## {title}", "", content])
+    return "\n".join(lines)
 
 
 def build_run_summary(
@@ -514,7 +580,9 @@ def build_run_summary(
     email_sent: bool,
     status: str,
     suggested_publish_time: str,
+    feishu_doc_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    feishu_doc_result = feishu_doc_result or {}
     return {
         "date": publish_date,
         "calendar": {
@@ -527,6 +595,10 @@ def build_run_summary(
         "status": status,
         "feishu_sent": feishu_sent,
         "email_sent": email_sent,
+        "feishu_doc_created": bool(feishu_doc_result.get("created")),
+        "feishu_doc_written": bool(feishu_doc_result.get("written")),
+        "feishu_doc_url": feishu_doc_result.get("document_url", ""),
+        "feishu_doc_error": feishu_doc_result.get("error", ""),
         "manual_publish_required": True,
         "suggested_publish_time": suggested_publish_time,
     }
@@ -689,9 +761,24 @@ def _run_daily_pipeline_impl(
     package = publisher_agent.build_package(decision.selected_topic, review)
     save_article(output_dir / "publish_package.md", render_publish_package(package))
     save_article(output_dir / "wechat_ready_article.md", render_wechat_ready_article(review))
+    feishu_doc_result = create_feishu_doc_from_markdown(
+        title=f"{publish_date}｜{calendar_item.get('code')}｜{package.title}｜公众号内容包",
+        markdown_content=render_feishu_doc_content(
+            output_dir=output_dir,
+            calendar_item=calendar_item,
+            package=package,
+            suggested_publish_time=suggested_publish_time,
+        ),
+    )
     save_article(
         output_dir / "feishu_message.md",
-        render_feishu_message(package, calendar_item, output_dir, suggested_publish_time),
+        render_feishu_message(
+            package,
+            calendar_item,
+            output_dir,
+            suggested_publish_time,
+            feishu_doc_result,
+        ),
     )
     email_summary = render_email_summary(
         publish_date,
@@ -699,6 +786,7 @@ def _run_daily_pipeline_impl(
         decision,
         package,
         suggested_publish_time,
+        feishu_doc_result,
     )
     save_article(output_dir / "email_summary.md", email_summary)
     report_stage(stage, "publish", publish_date)
@@ -725,6 +813,7 @@ def _run_daily_pipeline_impl(
             email_sent=email_sent,
             status="待人工发布",
             suggested_publish_time=suggested_publish_time,
+            feishu_doc_result=feishu_doc_result,
         ),
     )
 

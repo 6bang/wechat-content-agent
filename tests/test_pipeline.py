@@ -15,6 +15,7 @@ from workflow.daily_pipeline import run_daily_pipeline
 def test_daily_pipeline_creates_publish_package(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("USE_MOCK", "true")
     monkeypatch.setenv("ENABLE_FEISHU", "false")
+    monkeypatch.setenv("ENABLE_FEISHU_DOC", "false")
     monkeypatch.setenv("ENABLE_EMAIL", "false")
 
     root = tmp_path / "project"
@@ -81,3 +82,4 @@ suggested_publish_time: "18:00"
     assert (output_dir / "feishu_message.md").exists()
     assert (output_dir / "email_summary.md").exists()
     assert (output_dir / "run_summary.json").exists()
+    assert '"feishu_doc_created": false' in (output_dir / "run_summary.json").read_text(encoding="utf-8")
