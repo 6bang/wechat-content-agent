@@ -23,7 +23,7 @@
 
 ## 一周 2-3-2 编排
 
-每天生成 3 个候选选题，但每天只选择 1 个主选题成稿。
+每天生成 3 个候选选题，并且 C/E/S 三个层级各写 1 篇完整文章。主编给出推荐优先发布稿，最终由老板/主编人工选择当天发哪篇。
 
 - 周一 `C1` 老板认知课
 - 周二 `E1` 电商老板观察
@@ -36,10 +36,10 @@
 ## Agent 分工
 
 - `选题策划 Agent`: 生成 C/E/S 三层候选选题。
-- `内容主编 Agent`: 按评分模型评估 3 个选题，选出今日主选题。
-- `内容编辑 Agent`: 生成文章大纲和公众号初稿。
-- `审稿 Agent`: 从标题、开头、逻辑、案例、方法、专业度、转化和风险角度审稿定稿。
-- `新媒体运营 Agent`: 生成标题、摘要、封面、朋友圈、社群、私聊、评论区问题和复盘模板。
+- `内容主编 Agent`: 按评分模型评估 3 个选题，给出今日推荐优先发布稿。
+- `内容编辑 Agent`: 分别为 C/E/S 三个选题生成文章大纲和公众号初稿。
+- `审稿 Agent`: 分别审阅 C/E/S 三篇文章，从标题、开头、逻辑、案例、方法、专业度、转化和风险角度审稿定稿。
+- `新媒体运营 Agent`: 分别为 C/E/S 三篇文章生成标题、摘要、封面、朋友圈、社群、私聊、评论区问题和复盘模板。
 - `总控 Agent / daily_pipeline`: 串联全流程，保存 outputs，创建飞书协作文档，触发飞书与邮箱通知。
 
 ## 主编评分模型
@@ -63,17 +63,17 @@
 2. 根据当天星期确定栏目编号
 3. 生成 C/E/S 三个候选选题
 4. 飞书汇报：选题策划完成
-5. 主编评估并选出主选题
+5. 主编评估并给出推荐优先发布稿
 6. 飞书汇报：主编评估完成
-7. 生成文章大纲
+7. 生成 C/E/S 三篇文章大纲
 8. 飞书汇报：文章大纲完成
-9. 生成公众号初稿
+9. 生成 C/E/S 三篇公众号初稿
 10. 飞书汇报：公众号初稿完成
-11. 审稿并生成终稿
+11. 审稿并生成 C/E/S 三篇终稿
 12. 飞书汇报：审稿定稿完成
-13. 生成发布包
+13. 生成 C/E/S 三篇发布包
 14. 飞书汇报：发布包完成
-15. 生成 `wechat_ready_article.md`、`email_summary.md`
+15. 生成 `article_selection.md`、三篇 `wechat_ready_article.md`、`email_summary.md`
 16. 如果开启飞书文档，创建飞书协作文档并写入完整内容包
 17. 生成 `feishu_message.md`，其中包含飞书文档链接
 18. 飞书汇报：今日内容包完成
@@ -89,6 +89,7 @@
 topics.json
 topics.md
 selected_topic.md
+article_selection.md
 draft.md
 review.md
 final_article.md
@@ -97,9 +98,24 @@ publish_package.md
 feishu_message.md
 email_summary.md
 run_summary.json
+articles/C/draft.md
+articles/C/review.md
+articles/C/final_article.md
+articles/C/wechat_ready_article.md
+articles/C/publish_package.md
+articles/E/draft.md
+articles/E/review.md
+articles/E/final_article.md
+articles/E/wechat_ready_article.md
+articles/E/publish_package.md
+articles/S/draft.md
+articles/S/review.md
+articles/S/final_article.md
+articles/S/wechat_ready_article.md
+articles/S/publish_package.md
 ```
 
-其中 `wechat_ready_article.md` 只包含最终公众号正文，方便运营复制到公众号后台；`final_article.md` 保留审稿结论和终稿完整记录。
+顶层 `wechat_ready_article.md`、`final_article.md`、`publish_package.md` 保留主编推荐稿，兼容旧流程。真正的三篇候选稿在 `articles/C`、`articles/E`、`articles/S` 目录里。
 
 ## 本地运行
 
@@ -257,19 +273,21 @@ WECHAT_CONTENT_SOURCE_URL=
 ```bash
 cd /Users/liuwenjun-15-air/Documents/New\ project\ 2/wechat-content-agent
 source .venv/bin/activate
-python src/sync_wechat_draft.py --date 2026-05-11 --dry-run
+python src/sync_wechat_draft.py --date 2026-05-11 --layer C --dry-run
 ```
 
 确认后同步到公众号草稿箱：
 
 ```bash
-python src/sync_wechat_draft.py --date 2026-05-11
+python src/sync_wechat_draft.py --date 2026-05-11 --layer C
 ```
+
+把 `--layer C` 换成 `--layer E` 或 `--layer S`，就能同步对应层级的候选稿。如果不加 `--layer`，默认同步顶层主编推荐稿。
 
 成功后会生成：
 
 ```text
-outputs/2026-05-11/wechat_draft_result.json
+outputs/2026-05-11/articles/C/wechat_draft_result.json
 ```
 
 并在终端显示公众号草稿 `media_id`。如果开启飞书通知，也会向群里汇报“公众号草稿箱同步完成”。
@@ -335,11 +353,11 @@ WECHAT_CONTENT_SOURCE_URL
 
 人工流程：
 
-1. 系统生成 `wechat_ready_article.md` 和 `publish_package.md`
+1. 系统生成 C/E/S 三篇候选文章和对应发布包
 2. 系统创建飞书协作文档，并把链接发到飞书群
 3. 飞书群收到“今日内容包完成”
-4. 主编在飞书文档里检查终稿并回复 `通过 / 修改`
-5. 本地运行 `python src/sync_wechat_draft.py --date YYYY-MM-DD` 同步到公众号草稿箱
+4. 主编在飞书文档里检查三篇稿件并回复 `发C / 发E / 发S / 修改`
+5. 本地运行 `python src/sync_wechat_draft.py --date YYYY-MM-DD --layer C/E/S` 同步被选中的稿件到公众号草稿箱
 6. 运营进入公众号后台检查排版并回复 `已排版 / 待排版`
 7. 老板或主编回复 `可发 / 暂缓`
 8. 运营人工发布
@@ -353,7 +371,7 @@ python3 -m pytest -q
 测试覆盖：
 
 - daily pipeline 能生成完整输出目录
-- 11 个每日输出文件存在
+- 每日顶层文件和 C/E/S 三篇候选稿文件存在
 - 周一到周日栏目编号分别返回 C1/E1/S1/E2/S2/C2/E3
 
 ## 后续升级方向

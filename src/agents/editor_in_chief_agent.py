@@ -31,7 +31,7 @@ class EditorInChiefAgent:
                 {
                     "topics": to_serializable(topics),
                     "calendar_item": calendar_item or {},
-                    "task": "从 3 个选题中选出今天最值得写的 1 个主选题。",
+                    "task": "从 3 个选题中评估出今天最推荐优先发布的 1 个主推选题；C/E/S三篇都会继续成稿。",
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -53,7 +53,7 @@ class EditorInChiefAgent:
             scoring_table=scores,
             selected_topic=selected_topic,
             selection_reason=(
-                f"{column}今日主选题选择 {selected_topic.layer} 层，因为它符合当天栏目节奏，并且在读者痛点、业务相关性和咨询承接上综合得分最高。"
+                f"{column}今日优先推荐 {selected_topic.layer} 层，因为它符合当天栏目节奏，并且在读者痛点、业务相关性和咨询承接上综合得分最高；C/E/S三篇仍会全部成稿，最终由人工选择发布。"
             ),
             article_positioning=self._positioning_for(selected_topic),
             target_user=selected_topic.target_user,

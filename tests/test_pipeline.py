@@ -71,9 +71,11 @@ suggested_publish_time: "18:00"
     assert package.title
     assert package.direct_message_script
     assert result["review"].approved is True
+    assert len(result["article_results"]) == 3
     assert (output_dir / "topics.json").exists()
     assert (output_dir / "topics.md").exists()
     assert (output_dir / "selected_topic.md").exists()
+    assert (output_dir / "article_selection.md").exists()
     assert (output_dir / "draft.md").exists()
     assert (output_dir / "review.md").exists()
     assert (output_dir / "final_article.md").exists()
@@ -84,3 +86,11 @@ suggested_publish_time: "18:00"
     assert (output_dir / "run_summary.json").exists()
     assert '"feishu_doc_created": false' in (output_dir / "run_summary.json").read_text(encoding="utf-8")
     assert len((output_dir / "wechat_ready_article.md").read_text(encoding="utf-8")) >= 2200
+    for layer in ["C", "E", "S"]:
+        article_dir = output_dir / "articles" / layer
+        assert (article_dir / "draft.md").exists()
+        assert (article_dir / "review.md").exists()
+        assert (article_dir / "final_article.md").exists()
+        assert (article_dir / "wechat_ready_article.md").exists()
+        assert (article_dir / "publish_package.md").exists()
+        assert len((article_dir / "wechat_ready_article.md").read_text(encoding="utf-8")) >= 2200

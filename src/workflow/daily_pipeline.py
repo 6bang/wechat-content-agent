@@ -58,63 +58,64 @@ STAGE_REPORTS = {
     "editor": {
         "stage_name": "主编评估完成",
         "role_name": "内容主编 Agent",
-        "task_name": "评估选题并确定今日主选题",
+        "task_name": "评估选题并给出今日推荐主推",
         "status": "已完成",
-        "summary": "已根据痛点强度、传播价值、精准流量价值、专业信任价值、转化价值、节奏匹配度完成评分，并选出今日主选题。",
+        "summary": "已根据痛点强度、传播价值、精准流量价值、专业信任价值、转化价值、节奏匹配度完成评分，并给出今日推荐主推；C/E/S三篇都会继续成稿，最终由人工选择发布。",
         "output_files": ["selected_topic.md"],
-        "next_step": "内容编辑 Agent 将根据主选题生成文章大纲和初稿。",
+        "next_step": "内容编辑 Agent 将分别为C/E/S三个选题生成文章大纲和初稿。",
     },
     "outline": {
         "stage_name": "文章大纲完成",
         "role_name": "内容编辑 Agent",
-        "task_name": "生成公众号文章大纲",
+        "task_name": "生成C/E/S三篇公众号文章大纲",
         "status": "已完成",
-        "summary": "已完成文章标题、开头钩子、核心观点、正文结构、案例设计、金句和结尾转化设计。",
-        "output_files": ["draft.md"],
-        "next_step": "内容编辑 Agent 将继续生成公众号初稿。",
+        "summary": "已完成C/E/S三篇文章的标题、开头钩子、核心观点、正文结构、案例设计、金句和结尾转化设计。",
+        "output_files": ["articles/C/draft.md", "articles/E/draft.md", "articles/S/draft.md"],
+        "next_step": "内容编辑 Agent 将继续生成C/E/S三篇公众号初稿。",
     },
     "draft": {
         "stage_name": "公众号初稿完成",
         "role_name": "内容编辑 Agent",
-        "task_name": "生成公众号初稿",
+        "task_name": "生成C/E/S三篇公众号初稿",
         "status": "已完成",
-        "summary": "已根据主选题完成公众号初稿，文章包含痛点开头、案例、方法、金句和转化引导。",
-        "output_files": ["draft.md"],
-        "next_step": "审稿 Agent 将进行审稿、修改和定稿。",
+        "summary": "已完成C/E/S三篇公众号初稿，文章包含痛点开头、案例、方法、金句和转化引导。",
+        "output_files": ["articles/C/draft.md", "articles/E/draft.md", "articles/S/draft.md"],
+        "next_step": "审稿 Agent 将分别进行审稿、修改和定稿。",
     },
     "review": {
         "stage_name": "审稿定稿完成",
         "role_name": "审稿 Agent",
-        "task_name": "审阅初稿并生成最终定稿",
+        "task_name": "审阅C/E/S三篇初稿并生成最终定稿",
         "status": "待人工确认",
-        "summary": "已完成标题、开头、逻辑、案例、方法、专业度、转化和风险检查，并输出最终定稿。",
-        "output_files": ["review.md", "final_article.md"],
-        "next_step": "新媒体运营 Agent 将生成发布包；主编可同步人工检查终稿。",
+        "summary": "已完成C/E/S三篇稿件的标题、开头、逻辑、案例、方法、专业度、转化和风险检查，并输出最终定稿。",
+        "output_files": ["articles/C/final_article.md", "articles/E/final_article.md", "articles/S/final_article.md"],
+        "next_step": "新媒体运营 Agent 将分别生成发布包；主编可人工选择今天发布哪一篇。",
     },
     "publish": {
         "stage_name": "发布包完成",
         "role_name": "新媒体运营 Agent",
-        "task_name": "生成公众号发布包",
+        "task_name": "生成C/E/S三篇公众号发布包",
         "status": "已完成",
-        "summary": "已生成公众号标题、摘要、封面文案、朋友圈文案、社群文案、私聊话术、评论区问题和数据复盘表。",
-        "output_files": ["publish_package.md"],
-        "next_step": "运营人员可复制终稿到飞书文档或公众号后台，等待老板/主编确认发布。",
+        "summary": "已为C/E/S三篇文章生成公众号标题、摘要、封面文案、朋友圈文案、社群文案、私聊话术、评论区问题和数据复盘表。",
+        "output_files": ["article_selection.md", "articles/C/publish_package.md", "articles/E/publish_package.md", "articles/S/publish_package.md"],
+        "next_step": "请老板/主编从C/E/S三篇中选择一篇进入公众号草稿箱和人工发布流程。",
     },
     "complete": {
         "stage_name": "今日内容包完成",
         "role_name": "总控 Agent",
         "task_name": "完成今日公众号内容生产流水线",
         "status": "待人工发布",
-        "summary": "今日公众号内容包已全部生成，包含选题、主选题、初稿、审稿、终稿、可复制公众号正文、发布包、飞书消息和邮件摘要。",
+        "summary": "今日公众号内容包已全部生成，包含C/E/S三篇文章、主编推荐、初稿、审稿、终稿、可复制公众号正文、发布包、飞书消息和邮件摘要。",
         "output_files": [
             "topics.md",
             "selected_topic.md",
-            "wechat_ready_article.md",
-            "final_article.md",
-            "publish_package.md",
+            "article_selection.md",
+            "articles/C/wechat_ready_article.md",
+            "articles/E/wechat_ready_article.md",
+            "articles/S/wechat_ready_article.md",
             "feishu_message.md",
         ],
-        "next_step": "请主编确认终稿，运营排版公众号，建议今天18:00人工发布。",
+        "next_step": "请主编从C/E/S三篇中选择一篇，运营同步到公众号草稿箱，建议今天18:00人工发布。",
     },
 }
 
@@ -274,6 +275,50 @@ def render_selected_topic(decision: EditorialDecision, calendar_item: dict[str, 
     )
 
 
+def build_article_decision(
+    editor_decision: EditorialDecision,
+    topic,
+    calendar_item: dict[str, Any],
+) -> EditorialDecision:
+    recommended_marker = "主编推荐发布" if topic.layer == editor_decision.selected_topic.layer else "候选备选稿"
+    return EditorialDecision(
+        scoring_table=editor_decision.scoring_table,
+        selected_topic=topic,
+        selection_reason=(
+            f"{topic.layer}层文章作为今日{recommended_marker}进入成稿池。"
+            f"今日栏目是 {calendar_item.get('code')}「{calendar_item.get('column')}」，最终由老板/主编人工选择发布。"
+        ),
+        article_positioning=article_positioning_for_layer(topic.layer),
+        target_user=topic.target_user,
+        writing_direction=(
+            "参考平台推荐型长文排版：强观察标题、强冲突开头、真实案例中段、"
+            "知识库+多维表+流程可视化方法、结果清单和轻转化。"
+        ),
+        avoid_direction="不要写成泛泛观点文，不要只讲情绪，不要硬广课程，也不要承诺立刻见效。",
+        must_include_points=[
+            "一个让老板有代入感的强冲突开头",
+            "问题背后的流程、标准或绩效原因",
+            "知识库、多维表、流程可视化等工具感方法",
+            "一个电商团队案例或场景",
+            "自然引出流程表、诊断表或咨询服务",
+        ],
+        conversion_suggestion=topic.suitable_product,
+        final_title_suggestion=topic.title,
+    )
+
+
+def article_positioning_for_layer(layer: str) -> str:
+    if layer == "C":
+        return "认知升级型"
+    if layer == "E":
+        return "痛点共鸣型"
+    return "方法论干货型"
+
+
+def article_dir(output_dir: Path, layer: str) -> Path:
+    return output_dir / "articles" / layer
+
+
 def render_draft(draft: ArticleDraft) -> str:
     outline = "\n".join(f"- {item}" for item in draft.outline)
     golden_sentences = "\n".join(f"- {item}" for item in draft.golden_sentences)
@@ -422,11 +467,14 @@ def render_feishu_message(
     output_dir: Path,
     suggested_publish_time: str,
     feishu_doc_result: dict[str, Any] | None = None,
+    article_results: list[dict[str, Any]] | None = None,
 ) -> str:
     output_path = Path("outputs") / calendar_item["date"]
     wechat_ready_path = output_path / "wechat_ready_article.md"
     final_article_path = output_path / "final_article.md"
     publish_package_path = output_path / "publish_package.md"
+    selection_path = output_path / "article_selection.md"
+    article_results = article_results or []
     feishu_doc_result = feishu_doc_result or {}
     feishu_doc_url = str(feishu_doc_result.get("document_url") or "").strip()
     feishu_doc_error = str(feishu_doc_result.get("error") or "").strip()
@@ -446,34 +494,27 @@ def render_feishu_message(
             f"栏目编号：{calendar_item.get('code')}",
             f"栏目名称：{calendar_item.get('column')}",
             f"内容层级：{calendar_item.get('layer')}",
-            f"今日主选题：{package.title}",
-            f"文章标题：《{package.title}》",
-            "当前状态：待主编确认 / 待运营排版 / 可发布",
+            f"主编推荐：{package.selected_layer}层｜《{package.title}》",
+            "当前状态：C/E/S三篇候选稿已生成，待人工选择发布哪一篇",
             "",
             "请主编检查：",
-            "1. 标题是否有点击欲望",
+            "1. 三篇标题哪一篇更适合今天发布",
             "2. 开头是否击中老板痛点",
             "3. 案例是否真实可信",
-            "4. 方法是否有落地感",
-            "5. 结尾是否适合引导咨询",
+            "4. 方法是否有工具感和落地感",
+            "5. 结尾是否适合引导咨询或领取资料",
             "",
             "请运营执行：",
-            "1. 复制 wechat_ready_article.md 到飞书文档",
-            "2. 根据 publish_package.md 准备标题、摘要、封面文案",
-            "3. 排版公众号",
-            "4. 准备朋友圈文案",
-            "5. 准备社群分发文案",
-            "6. 发布前请老板确认",
+            "1. 查看 article_selection.md 选择C/E/S其中一篇",
+            "2. 根据对应 publish_package.md 准备标题、摘要、封面文案",
+            "3. 用 `python src/sync_wechat_draft.py --date 日期 --layer C/E/S` 同步到公众号草稿箱",
+            "4. 参考爆文排版：短段落、强小标题、工具截图、领取资料二维码",
+            "5. 发布前请老板/主编确认",
             "",
-            "稿件路径：",
-            str(wechat_ready_path),
+            "选稿清单：",
+            str(selection_path),
             "",
-            "完整终稿路径：",
-            str(final_article_path),
-            "",
-            "发布包路径：",
-            str(publish_package_path),
-            "",
+            *render_feishu_article_paths(article_results, calendar_item["date"]),
             "飞书协作文档：",
             feishu_doc_status,
             "",
@@ -486,20 +527,74 @@ def render_feishu_message(
             f"今天{suggested_publish_time}",
             "",
             "飞书群人工确认规则：",
-            "主编回复：通过 / 修改",
+            "主编回复：发C / 发E / 发S / 修改",
             "运营回复：已排版 / 待排版",
             "老板回复：可发 / 暂缓",
             "",
             "可复制到微信的提醒文案：",
-            "老板，今日公众号稿件已生成：",
-            f"《{package.title}》",
-            "已发到飞书群，请查看终稿和发布包。",
+            "老板，今日C/E/S三篇公众号候选稿已生成，主编推荐：",
+            f"{package.selected_layer}层｜《{package.title}》",
+            "已发到飞书群，请选择今天发布哪一篇。",
         ]
     )
 
 
+def render_feishu_article_paths(article_results: list[dict[str, Any]], publish_date: str) -> list[str]:
+    if not article_results:
+        return []
+    lines = ["三篇候选稿件："]
+    for result in article_results:
+        topic = result["topic"]
+        layer_dir = Path("outputs") / publish_date / "articles" / topic.layer
+        lines.extend(
+            [
+                f"- {topic.layer}层｜《{result['package'].title}》",
+                f"  正文：{layer_dir / 'wechat_ready_article.md'}",
+                f"  发布包：{layer_dir / 'publish_package.md'}",
+            ]
+        )
+    lines.append("")
+    return lines
+
+
 def render_wechat_ready_article(review: ReviewResult) -> str:
     return review.final_body
+
+
+def render_article_selection(
+    article_results: list[dict[str, Any]],
+    editor_decision: EditorialDecision,
+    calendar_item: dict[str, Any],
+) -> str:
+    lines = [
+        "# 今日三篇候选文章",
+        "",
+        f"- 日期: {calendar_item['date']}",
+        f"- 今日栏目: {calendar_item.get('code')}｜{calendar_item.get('column')}",
+        f"- 主编推荐优先发布: {editor_decision.selected_topic.layer}层｜{editor_decision.selected_topic.title}",
+        "- 人工发布规则: 老板/主编从C/E/S三篇中选择1篇，运营再同步到公众号草稿箱。",
+        "",
+        "## 三篇文章清单",
+    ]
+    for result in article_results:
+        topic = result["topic"]
+        layer_dir = Path("outputs") / calendar_item["date"] / "articles" / topic.layer
+        marker = "（主编推荐）" if topic.layer == editor_decision.selected_topic.layer else ""
+        lines.extend(
+            [
+                "",
+                f"### {topic.layer}层｜{topic.layer_name}{marker}",
+                "",
+                f"- 标题: {result['package'].title}",
+                f"- 目标用户: {topic.target_user}",
+                f"- 核心痛点: {topic.user_pain}",
+                f"- 可复制正文: {layer_dir / 'wechat_ready_article.md'}",
+                f"- 完整终稿: {layer_dir / 'final_article.md'}",
+                f"- 发布包: {layer_dir / 'publish_package.md'}",
+                f"- 同步草稿箱命令: `python src/sync_wechat_draft.py --date {calendar_item['date']} --layer {topic.layer}`",
+            ]
+        )
+    return "\n".join(lines)
 
 
 def render_email_summary(
@@ -509,26 +604,36 @@ def render_email_summary(
     package: PublishPackage,
     suggested_publish_time: str,
     feishu_doc_result: dict[str, Any] | None = None,
+    article_results: list[dict[str, Any]] | None = None,
 ) -> str:
     output_path = Path("outputs") / publish_date
     feishu_doc_url = ""
     if feishu_doc_result:
         feishu_doc_url = str(feishu_doc_result.get("document_url") or "")
-    return "\n".join(
-        [
-            f"# 【公众号今日稿件】{publish_date}｜{package.title}",
-            "",
-            f"- 今日日期: {publish_date}",
-            f"- 今日栏目: {calendar_item.get('code')}｜{calendar_item.get('column')}",
-            f"- 今日主选题: {decision.selected_topic.title}",
-            f"- 文章标题: {package.title}",
-            "- 当前状态: 待人工确认发布",
-            f"- 建议发布时间: 今天{suggested_publish_time}",
-            f"- 可复制公众号正文路径: {output_path / 'wechat_ready_article.md'}",
-            f"- 发布包路径: {output_path / 'publish_package.md'}",
-            f"- 飞书协作文档: {feishu_doc_url or '未创建或未启用'}",
-        ]
-    )
+    lines = [
+        f"# 【公众号今日稿件】{publish_date}｜三篇候选稿已生成",
+        "",
+        f"- 今日日期: {publish_date}",
+        f"- 今日栏目: {calendar_item.get('code')}｜{calendar_item.get('column')}",
+        f"- 主编推荐: {decision.selected_topic.layer}层｜{decision.selected_topic.title}",
+        "- 当前状态: 待人工选择发布稿件",
+        f"- 建议发布时间: 今天{suggested_publish_time}",
+        f"- 选稿清单路径: {output_path / 'article_selection.md'}",
+        f"- 飞书协作文档: {feishu_doc_url or '未创建或未启用'}",
+    ]
+    if article_results:
+        lines.extend(["", "## 三篇文章"])
+        for result in article_results:
+            topic = result["topic"]
+            layer_dir = output_path / "articles" / topic.layer
+            lines.extend(
+                [
+                    f"- {topic.layer}层｜{result['package'].title}",
+                    f"  正文: {layer_dir / 'wechat_ready_article.md'}",
+                    f"  发布包: {layer_dir / 'publish_package.md'}",
+                ]
+            )
+    return "\n".join(lines)
 
 
 def render_feishu_doc_content(
@@ -536,31 +641,48 @@ def render_feishu_doc_content(
     calendar_item: dict[str, Any],
     package: PublishPackage,
     suggested_publish_time: str,
+    article_results: list[dict[str, Any]] | None = None,
 ) -> str:
-    sections = [
+    sections: list[tuple[str, Path]] = [
         ("一、今日3个选题", "topics.md"),
         ("二、主编评估结果", "selected_topic.md"),
-        ("三、文章大纲与公众号初稿", "draft.md"),
-        ("四、审稿意见", "review.md"),
-        ("五、最终定稿", "final_article.md"),
-        ("六、可复制公众号正文", "wechat_ready_article.md"),
-        ("七、发布包", "publish_package.md"),
+        ("三、三篇文章人工选择清单", "article_selection.md"),
     ]
+    if article_results:
+        for result in article_results:
+            topic = result["topic"]
+            base = Path("articles") / topic.layer
+            sections.extend(
+                [
+                    (f"{topic.layer}层｜最终定稿", base / "final_article.md"),
+                    (f"{topic.layer}层｜可复制公众号正文", base / "wechat_ready_article.md"),
+                    (f"{topic.layer}层｜发布包", base / "publish_package.md"),
+                ]
+            )
+    else:
+        sections.extend(
+            [
+                ("四、文章大纲与公众号初稿", "draft.md"),
+                ("五、审稿意见", "review.md"),
+                ("六、最终定稿", "final_article.md"),
+                ("七、可复制公众号正文", "wechat_ready_article.md"),
+                ("八、发布包", "publish_package.md"),
+            ]
+        )
     lines = [
-        f"# {calendar_item['date']}｜{calendar_item.get('code')}｜{package.title}",
+        f"# {calendar_item['date']}｜C/E/S三篇公众号内容包",
         "",
         "【公众号内容协作文档】",
         "",
         f"- 日期：{calendar_item['date']}",
         f"- 栏目：{calendar_item.get('code')}｜{calendar_item.get('column')}",
-        f"- 内容层级：{calendar_item.get('layer')}",
-        f"- 文章标题：《{package.title}》",
+        f"- 主编推荐：《{package.title}》",
         f"- 建议发布时间：今天{suggested_publish_time}",
-        "- 当前状态：待主编确认 / 待运营排版 / 待老板确认发布",
+        "- 当前状态：待老板/主编从C/E/S三篇中选择发布稿",
         "",
         "## 人工确认发布规则",
         "",
-        "- 主编回复：通过 / 修改",
+        "- 老板/主编回复：发C / 发E / 发S / 修改",
         "- 运营回复：已排版 / 待排版",
         "- 老板回复：可发 / 暂缓",
     ]
@@ -581,8 +703,10 @@ def build_run_summary(
     status: str,
     suggested_publish_time: str,
     feishu_doc_result: dict[str, Any] | None = None,
+    article_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     feishu_doc_result = feishu_doc_result or {}
+    article_results = article_results or []
     return {
         "date": publish_date,
         "calendar": {
@@ -592,6 +716,17 @@ def build_run_summary(
         },
         "selected_topic": decision.selected_topic.title,
         "article_title": package.title,
+        "article_count": len(article_results) or 1,
+        "articles": [
+            {
+                "layer": result["topic"].layer,
+                "layer_name": result["topic"].layer_name,
+                "title": result["package"].title,
+                "wechat_ready_article": str(Path("outputs") / publish_date / "articles" / result["topic"].layer / "wechat_ready_article.md"),
+                "publish_package": str(Path("outputs") / publish_date / "articles" / result["topic"].layer / "publish_package.md"),
+            }
+            for result in article_results
+        ],
         "status": status,
         "feishu_sent": feishu_sent,
         "email_sent": email_sent,
@@ -602,6 +737,18 @@ def build_run_summary(
         "manual_publish_required": True,
         "suggested_publish_time": suggested_publish_time,
     }
+
+
+def get_recommended_article_result(
+    article_results: list[dict[str, Any]],
+    editor_decision: EditorialDecision,
+) -> dict[str, Any]:
+    for result in article_results:
+        if result["topic"].layer == editor_decision.selected_topic.layer:
+            return result
+    if not article_results:
+        raise ValueError("No article results available.")
+    return article_results[0]
 
 
 def run_daily_pipeline(
@@ -692,7 +839,24 @@ def _run_daily_pipeline_impl(
         system_prompt=load_prompt(root_dir, "writer_agent.md"),
         llm=llm,
     )
-    draft = writer_agent.write_article(decision)
+    article_results: list[dict[str, Any]] = []
+    for topic in topics:
+        topic_decision = build_article_decision(decision, topic, calendar_item)
+        draft = writer_agent.write_article(topic_decision)
+        topic_output_dir = article_dir(output_dir, topic.layer)
+        topic_output_dir.mkdir(parents=True, exist_ok=True)
+        save_article(topic_output_dir / "draft.md", render_outline(draft))
+        article_results.append(
+            {
+                "topic": topic,
+                "decision": topic_decision,
+                "draft": draft,
+                "output_dir": topic_output_dir,
+            }
+        )
+
+    recommended = get_recommended_article_result(article_results, decision)
+    draft = recommended["draft"]
     save_article(output_dir / "draft.md", render_outline(draft))
     report_stage(stage, "outline", publish_date)
     if stage == "outline":
@@ -703,6 +867,7 @@ def _run_daily_pipeline_impl(
             topics,
             decision=decision,
             draft=draft,
+            article_results=article_results,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -710,6 +875,9 @@ def _run_daily_pipeline_impl(
             },
             completed_stage=stage,
         )
+
+    for result in article_results:
+        save_article(result["output_dir"] / "draft.md", render_draft(result["draft"]))
     save_article(output_dir / "draft.md", render_draft(draft))
     report_stage(stage, "draft", publish_date)
     if stage == "draft":
@@ -720,6 +888,7 @@ def _run_daily_pipeline_impl(
             topics,
             decision=decision,
             draft=draft,
+            article_results=article_results,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -732,9 +901,18 @@ def _run_daily_pipeline_impl(
         system_prompt=load_prompt(root_dir, "reviewer_agent.md"),
         llm=llm,
     )
-    review = reviewer_agent.review(draft)
+    for result in article_results:
+        review = reviewer_agent.review(result["draft"])
+        result["review"] = review
+        save_article(result["output_dir"] / "review.md", render_review(review))
+        save_article(result["output_dir"] / "final_article.md", render_final_article(review))
+        save_article(result["output_dir"] / "wechat_ready_article.md", render_wechat_ready_article(review))
+
+    recommended = get_recommended_article_result(article_results, decision)
+    review = recommended["review"]
     save_article(output_dir / "review.md", render_review(review))
     save_article(output_dir / "final_article.md", render_final_article(review))
+    save_article(output_dir / "wechat_ready_article.md", render_wechat_ready_article(review))
     report_stage(stage, "review", publish_date)
     if stage == "review":
         return build_pipeline_result(
@@ -745,6 +923,7 @@ def _run_daily_pipeline_impl(
             decision=decision,
             draft=draft,
             review=review,
+            article_results=article_results,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -758,16 +937,23 @@ def _run_daily_pipeline_impl(
         system_prompt=load_prompt(root_dir, "publisher_agent.md"),
         llm=llm,
     )
-    package = publisher_agent.build_package(decision.selected_topic, review)
+    for result in article_results:
+        package = publisher_agent.build_package(result["topic"], result["review"])
+        result["package"] = package
+        save_article(result["output_dir"] / "publish_package.md", render_publish_package(package))
+
+    recommended = get_recommended_article_result(article_results, decision)
+    package = recommended["package"]
     save_article(output_dir / "publish_package.md", render_publish_package(package))
-    save_article(output_dir / "wechat_ready_article.md", render_wechat_ready_article(review))
+    save_article(output_dir / "article_selection.md", render_article_selection(article_results, decision, calendar_item))
     feishu_doc_result = create_feishu_doc_from_markdown(
-        title=f"{publish_date}｜{calendar_item.get('code')}｜{package.title}｜公众号内容包",
+        title=f"{publish_date}｜C/E/S三篇公众号内容包｜主推{package.title}",
         markdown_content=render_feishu_doc_content(
             output_dir=output_dir,
             calendar_item=calendar_item,
             package=package,
             suggested_publish_time=suggested_publish_time,
+            article_results=article_results,
         ),
     )
     save_article(
@@ -778,6 +964,7 @@ def _run_daily_pipeline_impl(
             output_dir,
             suggested_publish_time,
             feishu_doc_result,
+            article_results,
         ),
     )
     email_summary = render_email_summary(
@@ -787,6 +974,7 @@ def _run_daily_pipeline_impl(
         package,
         suggested_publish_time,
         feishu_doc_result,
+        article_results,
     )
     save_article(output_dir / "email_summary.md", email_summary)
     report_stage(stage, "publish", publish_date)
@@ -796,10 +984,13 @@ def _run_daily_pipeline_impl(
         subject=f"【公众号今日稿件】{publish_date}｜{package.title}",
         body=email_summary,
         attachments=[
+            output_dir / "article_selection.md",
             output_dir / "wechat_ready_article.md",
             output_dir / "final_article.md",
             output_dir / "publish_package.md",
             output_dir / "feishu_message.md",
+            *(result["output_dir"] / "wechat_ready_article.md" for result in article_results),
+            *(result["output_dir"] / "publish_package.md" for result in article_results),
         ],
     )
     save_json(
@@ -814,6 +1005,7 @@ def _run_daily_pipeline_impl(
             status="待人工发布",
             suggested_publish_time=suggested_publish_time,
             feishu_doc_result=feishu_doc_result,
+            article_results=article_results,
         ),
     )
 
@@ -826,6 +1018,7 @@ def _run_daily_pipeline_impl(
         draft=draft,
         review=review,
         package=package,
+        article_results=article_results,
         llm_outputs={
             "topic_agent": topic_agent.last_llm_response,
             "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -846,6 +1039,7 @@ def build_pipeline_result(
     draft: ArticleDraft | None = None,
     review: ReviewResult | None = None,
     package: PublishPackage | None = None,
+    article_results: list[dict[str, Any]] | None = None,
     llm_outputs: dict[str, str] | None = None,
     completed_stage: str = "all",
 ) -> dict[str, object]:
@@ -858,6 +1052,7 @@ def build_pipeline_result(
         "draft": draft,
         "review": review,
         "publish_package": package,
+        "article_results": article_results or [],
         "llm_outputs": llm_outputs or {},
         "completed_stage": completed_stage,
     }
