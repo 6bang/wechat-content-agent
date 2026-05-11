@@ -83,3 +83,4 @@ suggested_publish_time: "18:00"
     assert (output_dir / "email_summary.md").exists()
     assert (output_dir / "run_summary.json").exists()
     assert '"feishu_doc_created": false' in (output_dir / "run_summary.json").read_text(encoding="utf-8")
+    assert len((output_dir / "wechat_ready_article.md").read_text(encoding="utf-8")) >= 2200
