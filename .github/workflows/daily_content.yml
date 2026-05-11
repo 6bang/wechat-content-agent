@@ -8,7 +8,7 @@ on:
         required: false
         type: string
   schedule:
-    - cron: "0 22 * * *" # 06:00 Beijing
+    - cron: "0 17 * * *" # 01:00 Beijing
 
 jobs:
   run-content-agent:

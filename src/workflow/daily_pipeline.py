@@ -50,7 +50,7 @@ DEFAULT_LAYERS = {
     }
 }
 DEFAULT_SCHEDULE = {
-    "daily_run_time": "06:00",
+    "daily_run_time": "01:00",
     "timezone": "Asia/Shanghai",
     "suggested_publish_time": "18:00",
 }
