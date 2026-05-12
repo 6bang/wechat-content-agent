@@ -37,7 +37,7 @@ class ReviewerAgent:
         final_body = self._remove_banned_words(body)
         revision_notes = [
             "强化了问题到方法的转承关系。",
-            "检查文章是否承接课件库中的岗位流程、SOP和评估标准。",
+            "检查文章是否承接岗位流程、SOP和评估标准。",
             "保留咨询引导，但避免硬广表达。",
             "补强了专业度、工具感和人工确认发布提醒。",
         ]

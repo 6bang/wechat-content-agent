@@ -22,13 +22,17 @@ def save_visual_assets(output_dir: Path, visual_layout: VisualLayoutPackage) -> 
     for index, asset in enumerate(visual_layout.visual_assets, start=1):
         filename = safe_svg_filename(asset.filename or f"visual_{index}.svg")
         path = assets_dir / filename
-        path.write_text(render_svg(asset, visual_layout.selected_layer, index), encoding="utf-8")
+        path.write_text(render_svg(asset, visual_layout, index), encoding="utf-8")
         saved_paths.append(path)
 
     return saved_paths
 
 
-def render_svg(asset: VisualAsset, layer: str, index: int) -> str:
+def render_svg(asset: VisualAsset, visual_layout: VisualLayoutPackage, index: int) -> str:
+    layer = visual_layout.selected_layer
+    if "封面" in asset.asset_type or asset.filename == "cover.svg":
+        return render_cover_svg(asset, visual_layout, layer)
+
     primary, accent, background = LAYER_COLORS.get(layer, ("#222222", "#2D7DD2", "#F7F7F7"))
     bullets = build_bullets(asset.prompt)
     title_rows, next_y = svg_text_lines(asset.title, x=84, y=160, css_class="title", max_chars=20, line_height=48, max_lines=2)
@@ -62,6 +66,79 @@ def render_svg(asset: VisualAsset, layer: str, index: int) -> str:
   {notes_rows}
 </svg>
 """
+
+
+def render_cover_svg(asset: VisualAsset, visual_layout: VisualLayoutPackage, layer: str) -> str:
+    primary, accent, background = LAYER_COLORS.get(layer, ("#222222", "#2D7DD2", "#F7F7F7"))
+    title = visual_layout.title.strip(" 《》")
+    title_rows = svg_cover_title_lines(title, x=68, y=300)
+    subtitle = cover_subtitle(title, layer)
+    subtitle_rows, _ = svg_text_lines(subtitle, x=72, y=540, css_class="cover_subtitle", max_chars=18, line_height=38, max_lines=2)
+
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900" role="img" aria-label="{escape(title)}封面图">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="{background}"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <style>
+      .bg {{ fill: url(#paper); }}
+      .cover_title {{ fill: {primary}; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 74px; font-weight: 800; letter-spacing: 0; }}
+      .cover_subtitle {{ fill: #5C6470; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 31px; font-weight: 500; letter-spacing: 0; }}
+      .eyebrow {{ fill: {accent}; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 25px; font-weight: 800; letter-spacing: 0; }}
+      .brand {{ fill: {primary}; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 0; }}
+      .label {{ fill: #FFFFFF; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: 0; }}
+      .small {{ fill: #5C6470; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 22px; letter-spacing: 0; }}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="900"/>
+  <rect x="42" y="42" width="816" height="816" rx="42" fill="#FFFFFF" opacity="0.88"/>
+  <rect x="68" y="82" width="180" height="48" rx="24" fill="{accent}"/>
+  <text x="94" y="114" class="label">六邦电商</text>
+  <text x="68" y="174" class="eyebrow">给电商老板的流程化组织课</text>
+  {title_rows}
+  {subtitle_rows}
+  <text x="72" y="820" class="brand">不是老板更忙，而是系统更强</text>
+  <g transform="translate(70 650)">
+    <rect x="0" y="0" width="760" height="145" rx="28" fill="{primary}" opacity="0.06"/>
+    <rect x="36" y="42" width="140" height="58" rx="18" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
+    <rect x="226" y="42" width="140" height="58" rx="18" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
+    <rect x="416" y="42" width="140" height="58" rx="18" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
+    <rect x="606" y="42" width="118" height="58" rx="18" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
+    <text x="69" y="78" class="small">流程</text>
+    <text x="259" y="78" class="small">标准</text>
+    <text x="449" y="78" class="small">复盘</text>
+    <text x="631" y="78" class="small">复制</text>
+    <path d="M176 71 H226 M366 71 H416 M556 71 H606" stroke="{accent}" stroke-width="7" stroke-linecap="round"/>
+  </g>
+</svg>
+"""
+
+
+def svg_cover_title_lines(title: str, x: int, y: int) -> str:
+    normalized = title.replace("，", ",")
+    if "老板越忙" in normalized and "公司越乱" in normalized:
+        lines = ["为什么老板越忙", "公司越乱？"]
+    elif "," in normalized:
+        lines = [part.strip(" ?？") for part in normalized.split(",", 1)]
+    else:
+        lines = wrap_text(title, max_chars=8, max_lines=3)
+    rows = [f'<text x="{x}" y="{y + index * 86}" class="cover_title">{escape(line)}</text>' for index, line in enumerate(lines[:3])]
+    return "\n  ".join(rows)
+
+
+def cover_subtitle(title: str, layer: str) -> str:
+    if "老板越忙" in title:
+        return "公司越大越不能靠老板救火"
+    if "招运营" in title:
+        return "别再用招聘填系统的坑"
+    if "岗位流程" in title:
+        return "先把岗位动作拆清楚，再谈执行力"
+    if layer == "S":
+        return "SOP不是文件，而是团队稳定产出的系统"
+    if layer == "E":
+        return "电商团队管理，先抓真正的卡点"
+    return "老板要从盯人，走向看系统"
 
 
 def render_visual_motif(asset_type: str, primary: str, accent: str) -> str:

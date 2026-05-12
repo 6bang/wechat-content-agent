@@ -98,14 +98,13 @@ class WriterAgent:
             "结尾: 用低压力方式引导留言或私信咨询",
         ]
         if self._has_courseware_context():
-            outline.insert(4, "课件框架: 先找流程，再找方法，最后找人跑；用 S/A/B/C 标准评估过程结果")
+            outline.insert(4, "课程方法框架: 先找流程，再找方法，最后找人跑；用 S/A/B/C 标准评估过程结果")
         return outline
 
     def _build_body(self, topic: ContentTopic, outline: list[str], editor_note: str) -> str:
         pain_point = clean_sentence(topic.pain_point)
         core_insight = clean_sentence(topic.core_insight)
         case_direction = clean_sentence(topic.case_direction)
-        courseware_note = self._courseware_note()
         return "\n\n".join(
             [
                 f"# {topic.title}",
@@ -120,7 +119,6 @@ class WriterAgent:
                     "但一换人，动作就变形；一换品，打法就重来；一换平台节奏，团队又开始问老板怎么办。"
                     "这时候问题就不是有没有经验，而是经验有没有被做成系统。"
                 ),
-                courseware_note,
                 (
                     "真正厉害的团队，不是每个人都特别强，而是普通人进来以后，也知道第一步做什么、第二步交付什么、异常情况找谁处理。"
                     "这篇文章不讲虚的，我们就拆一个问题：为什么赚钱的电商团队，最后都要做流程化。"
@@ -177,7 +175,7 @@ class WriterAgent:
                 (
                     "第一，找流程。"
                     "不要一上来就写一大本制度，而是先把一个岗位每天到底怎么交付拆清楚。"
-                    "按课件里的方法，可以从主题开始拆到一级流程、二级流程、操作步骤，再补上数据评估。"
+                    "按一线项目里的落地方法，可以从主题开始拆到一级流程、二级流程、操作步骤，再补上数据评估。"
                 ),
                 (
                     "第二，找方法。"
@@ -187,7 +185,7 @@ class WriterAgent:
                 (
                     "第三，找人跑。"
                     "SOP 不是办公室里憋出来的，必须让业务里最会打仗的人先跑出来。"
-                    "课件里把这种人叫“兵王”：他先把方法跑通，再把过程梳理成 SOP，然后带人跑，最后换人也能跑。"
+                    "我们把这种人叫“兵王”：他先把方法跑通，再把过程梳理成 SOP，然后带人跑，最后换人也能跑。"
                 ),
                 (
                     "最后再加一套 S/A/B/C 评估标准。"
@@ -260,21 +258,6 @@ class WriterAgent:
     def _has_courseware_context(self) -> bool:
         context = self.courseware_context or {}
         return bool(context.get("available") and context.get("summary"))
-
-    def _courseware_note(self) -> str:
-        if not self._has_courseware_context():
-            return (
-                "这一篇先用六邦电商的通用流程化组织框架来写："
-                "把经验拆成流程，把流程变成标准，把标准接到日常检查。"
-            )
-
-        files = [item.get("path", "") for item in (self.courseware_context or {}).get("files", [])[:2]]
-        file_text = "、".join(path for path in files if path)
-        return (
-            "这一篇的底层框架，优先参考六邦 GitHub 课件库。"
-            f"本次读取到的重点资料包括：{file_text}。"
-            "写成文章时不照搬课件原文，而是把里面的岗位流程、SOP、S/A/B/C评估和业务复盘方法，翻译成老板能听懂的管理语言。"
-        )
 
 
 def clean_sentence(text: str) -> str:

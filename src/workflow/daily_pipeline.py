@@ -661,6 +661,8 @@ def format_wechat_ready_article(title: str, markdown_text: str) -> str:
             continue
         if block.startswith("主编提示"):
             continue
+        if is_internal_courseware_note(block):
+            continue
 
         if block.startswith("# "):
             clean_title = block[2:].strip() or title
@@ -731,6 +733,20 @@ def build_pull_quote(title: str, markdown_text: str) -> str:
         if candidate in source:
             return candidate
     return "真正能长大的电商公司，最后拼的不是个人英雄，而是系统能力。"
+
+
+def is_internal_courseware_note(block: str) -> bool:
+    internal_markers = [
+        "这一篇的底层框架",
+        "本次读取到的重点资料包括",
+        "GitHub课件库",
+        "GitHub 课件库",
+        "课件库路径",
+        "写成文章时不照搬课件原文",
+        "outputs/",
+        ".pptx",
+    ]
+    return any(marker in block for marker in internal_markers)
 
 
 def should_highlight_paragraph(paragraph: str) -> bool:
@@ -965,6 +981,8 @@ def format_article_for_feishu(markdown_text: str) -> list[str]:
         if not block:
             continue
         if block.startswith("主编提示"):
+            continue
+        if is_internal_courseware_note(block):
             continue
         if block.strip() == "---":
             continue
