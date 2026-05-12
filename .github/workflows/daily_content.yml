@@ -40,10 +40,31 @@ jobs:
       SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      ENABLE_COURSEWARE_CONTEXT: ${{ secrets.ENABLE_COURSEWARE_CONTEXT }}
+      COURSEWARE_REPO_TOKEN: ${{ secrets.COURSEWARE_REPO_TOKEN }}
+      COURSEWARE_PATH: courseware/6bang-courseware
+      COURSEWARE_REFERENCE_PATHS: ${{ secrets.COURSEWARE_REFERENCE_PATHS }}
+      COURSEWARE_MAX_FILES: ${{ secrets.COURSEWARE_MAX_FILES }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Check out courseware repository
+        if: ${{ env.ENABLE_COURSEWARE_CONTEXT == 'true' && env.COURSEWARE_REPO_TOKEN != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: 6bang/6bang-courseware
+          token: ${{ secrets.COURSEWARE_REPO_TOKEN }}
+          path: courseware/6bang-courseware
+          lfs: true
+          sparse-checkout: |
+            README.md
+            01_课程总纲
+            02_线下课课件
+            05_客户案例
+            06_销售素材
+            07_公众号素材
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -71,6 +92,8 @@ jobs:
           set -euo pipefail
           export USE_MOCK="${USE_MOCK:-true}"
           export MODEL="${MODEL:-gpt-5.5-thinking}"
+          export ENABLE_COURSEWARE_CONTEXT="${ENABLE_COURSEWARE_CONTEXT:-false}"
+          export COURSEWARE_MAX_FILES="${COURSEWARE_MAX_FILES:-12}"
           python src/main.py --date "${{ steps.resolve.outputs.run_date }}"
 
       - name: Upload generated outputs

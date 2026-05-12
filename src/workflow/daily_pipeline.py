@@ -31,6 +31,7 @@ from storage.save_article import save_article
 from storage.save_json import save_json
 from storage.render_visual_assets import save_visual_assets
 from utils.llm import call_llm
+from utils.courseware_loader import load_courseware_context, render_courseware_reference
 
 try:
     import yaml
@@ -1046,9 +1047,11 @@ def build_run_summary(
     suggested_publish_time: str,
     feishu_doc_result: dict[str, Any] | None = None,
     article_results: list[dict[str, Any]] | None = None,
+    courseware_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     feishu_doc_result = feishu_doc_result or {}
     article_results = article_results or []
+    courseware_context = courseware_context or {}
     return {
         "date": publish_date,
         "calendar": {
@@ -1079,6 +1082,10 @@ def build_run_summary(
         "feishu_doc_written": bool(feishu_doc_result.get("written")),
         "feishu_doc_url": feishu_doc_result.get("document_url", ""),
         "feishu_doc_error": feishu_doc_result.get("error", ""),
+        "courseware_context_enabled": bool(courseware_context.get("enabled")),
+        "courseware_context_available": bool(courseware_context.get("available")),
+        "courseware_root": courseware_context.get("root", ""),
+        "courseware_files": [item.get("path", "") for item in courseware_context.get("files", [])],
         "manual_publish_required": True,
         "suggested_publish_time": suggested_publish_time,
     }
@@ -1129,10 +1136,13 @@ def _run_daily_pipeline_impl(
     publish_date = calendar_item["date"]
     output_dir = root_dir / "outputs" / publish_date
     output_dir.mkdir(parents=True, exist_ok=True)
+    courseware_context = load_courseware_context(root_dir, calendar_item)
+    save_article(output_dir / "courseware_reference.md", render_courseware_reference(courseware_context))
 
     topic_agent = TopicAgent(
         brand=brand,
         layers=DEFAULT_LAYERS,
+        courseware_context=courseware_context,
         system_prompt=load_prompt(root_dir, "topic_agent.md"),
         llm=llm,
     )
@@ -1155,11 +1165,13 @@ def _run_daily_pipeline_impl(
             output_dir,
             calendar_item,
             topics,
+            courseware_context=courseware_context,
             llm_outputs={"topic_agent": topic_agent.last_llm_response},
             completed_stage=stage,
         )
 
     editor_agent = EditorInChiefAgent(
+        courseware_context=courseware_context,
         system_prompt=load_prompt(root_dir, "editor_in_chief_agent.md"),
         llm=llm,
     )
@@ -1173,6 +1185,7 @@ def _run_daily_pipeline_impl(
             calendar_item,
             topics,
             decision=decision,
+            courseware_context=courseware_context,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -1181,6 +1194,7 @@ def _run_daily_pipeline_impl(
         )
 
     writer_agent = WriterAgent(
+        courseware_context=courseware_context,
         system_prompt=load_prompt(root_dir, "writer_agent.md"),
         llm=llm,
     )
@@ -1213,6 +1227,7 @@ def _run_daily_pipeline_impl(
             decision=decision,
             draft=draft,
             article_results=article_results,
+            courseware_context=courseware_context,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -1234,6 +1249,7 @@ def _run_daily_pipeline_impl(
             decision=decision,
             draft=draft,
             article_results=article_results,
+            courseware_context=courseware_context,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -1243,6 +1259,7 @@ def _run_daily_pipeline_impl(
         )
 
     reviewer_agent = ReviewerAgent(
+        courseware_context=courseware_context,
         system_prompt=load_prompt(root_dir, "reviewer_agent.md"),
         llm=llm,
     )
@@ -1269,6 +1286,7 @@ def _run_daily_pipeline_impl(
             draft=draft,
             review=review,
             article_results=article_results,
+            courseware_context=courseware_context,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -1279,6 +1297,7 @@ def _run_daily_pipeline_impl(
         )
 
     publisher_agent = PublisherAgent(
+        courseware_context=courseware_context,
         system_prompt=load_prompt(root_dir, "publisher_agent.md"),
         llm=llm,
     )
@@ -1303,6 +1322,7 @@ def _run_daily_pipeline_impl(
             review=review,
             package=package,
             article_results=article_results,
+            courseware_context=courseware_context,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -1314,6 +1334,7 @@ def _run_daily_pipeline_impl(
         )
 
     visual_agent = VisualDesignerAgent(
+        courseware_context=courseware_context,
         system_prompt=load_prompt(root_dir, "visual_designer_agent.md"),
         llm=llm,
     )
@@ -1341,6 +1362,7 @@ def _run_daily_pipeline_impl(
             package=package,
             visual_layout=visual_layout,
             article_results=article_results,
+            courseware_context=courseware_context,
             llm_outputs={
                 "topic_agent": topic_agent.last_llm_response,
                 "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -1415,6 +1437,7 @@ def _run_daily_pipeline_impl(
             suggested_publish_time=suggested_publish_time,
             feishu_doc_result=feishu_doc_result,
             article_results=article_results,
+            courseware_context=courseware_context,
         ),
     )
 
@@ -1429,6 +1452,7 @@ def _run_daily_pipeline_impl(
         package=package,
         visual_layout=visual_layout,
         article_results=article_results,
+        courseware_context=courseware_context,
         llm_outputs={
             "topic_agent": topic_agent.last_llm_response,
             "editor_in_chief_agent": editor_agent.last_llm_response,
@@ -1452,6 +1476,7 @@ def build_pipeline_result(
     package: PublishPackage | None = None,
     visual_layout: VisualLayoutPackage | None = None,
     article_results: list[dict[str, Any]] | None = None,
+    courseware_context: dict[str, Any] | None = None,
     llm_outputs: dict[str, str] | None = None,
     completed_stage: str = "all",
 ) -> dict[str, object]:
@@ -1466,6 +1491,7 @@ def build_pipeline_result(
         "publish_package": package,
         "visual_layout": visual_layout,
         "article_results": article_results or [],
+        "courseware_context": courseware_context or {},
         "llm_outputs": llm_outputs or {},
         "completed_stage": completed_stage,
     }

@@ -17,6 +17,7 @@ def test_daily_pipeline_creates_publish_package(tmp_path: Path, monkeypatch) -> 
     monkeypatch.setenv("ENABLE_FEISHU", "false")
     monkeypatch.setenv("ENABLE_FEISHU_DOC", "false")
     monkeypatch.setenv("ENABLE_EMAIL", "false")
+    monkeypatch.setenv("ENABLE_COURSEWARE_CONTEXT", "false")
 
     root = tmp_path / "project"
     (root / "config").mkdir(parents=True)
@@ -84,6 +85,7 @@ suggested_publish_time: "18:00"
     assert (output_dir / "publish_package.md").exists()
     assert (output_dir / "visual_layout.md").exists()
     assert (output_dir / "visual_assets" / "cover.svg").exists()
+    assert (output_dir / "courseware_reference.md").exists()
     assert (output_dir / "feishu_doc_preview.md").exists()
     assert "<FEISHU_SPACER>" not in (output_dir / "feishu_doc_preview.md").read_text(encoding="utf-8")
     assert (output_dir / "feishu_message.md").exists()

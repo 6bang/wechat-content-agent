@@ -115,6 +115,7 @@ wechat_ready_article.md
 publish_package.md
 visual_layout.md
 visual_assets/
+courseware_reference.md
 feishu_doc_preview.md
 feishu_message.md
 email_summary.md
@@ -189,6 +190,46 @@ MODEL=gpt-5.5-thinking
 ```
 
 所有 Agent 都通过 `src/utils/llm.py` 的 `call_llm(system_prompt, user_prompt)` 调用模型。API 调用失败会输出清晰错误日志。
+
+## GitHub 课件库参考
+
+建议让 Agent 写文章前先读取你的私有课件库 `6bang/6bang-courseware`。这样生成的内容会优先参考课程框架、岗位流程、SOP、S/A/B/C 评估、案例和销售素材，而不是凭空写。
+
+本地运行时，在 `.env` 里配置：
+
+```env
+ENABLE_COURSEWARE_CONTEXT=true
+COURSEWARE_PATH=/Users/liuwenjun-15-air/Documents/6bang-courseware
+COURSEWARE_REFERENCE_PATHS=01_课程总纲,02_线下课课件,05_客户案例,06_销售素材,07_公众号素材
+COURSEWARE_MAX_FILES=12
+```
+
+GitHub Actions 运行时，因为课件库是私有仓库，需要额外配置一个只读 token：
+
+1. 在 GitHub 右上角头像里进入 `Settings`。
+2. 点击 `Developer settings`。
+3. 点击 `Personal access tokens`。
+4. 推荐选择 `Fine-grained tokens`，只授权 `6bang-courseware` 这个仓库。
+5. 权限给 `Contents: Read-only`。如果仓库文件用了 Git LFS，也要确保 token 能读取仓库内容。
+6. 生成 token 后，回到 `wechat-content-agent` 仓库。
+7. 进入 `Settings` → `Secrets and variables` → `Actions`。
+8. 新增 Secret：`COURSEWARE_REPO_TOKEN`，值粘贴刚生成的 token。
+
+还需要新增这些 Secrets：
+
+```text
+ENABLE_COURSEWARE_CONTEXT=true
+COURSEWARE_REFERENCE_PATHS=01_课程总纲,02_线下课课件,05_客户案例,06_销售素材,07_公众号素材
+COURSEWARE_MAX_FILES=12
+```
+
+每天运行后会多生成一个文件：
+
+```text
+outputs/YYYY-MM-DD/courseware_reference.md
+```
+
+这个文件会列出本次 Agent 实际读取了哪些课件、提取了哪些参考内容。你检查文章是否“吃到课件”时，先看这个文件。
 
 ## 飞书机器人
 
@@ -384,6 +425,10 @@ SMTP_PORT
 SMTP_USER
 SMTP_PASSWORD
 EMAIL_TO
+ENABLE_COURSEWARE_CONTEXT
+COURSEWARE_REPO_TOKEN
+COURSEWARE_REFERENCE_PATHS
+COURSEWARE_MAX_FILES
 ENABLE_WECHAT_DRAFT
 WECHAT_APP_ID
 WECHAT_APP_SECRET

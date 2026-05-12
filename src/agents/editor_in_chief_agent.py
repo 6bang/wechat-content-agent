@@ -13,6 +13,7 @@ LLMFn = Callable[[str, str], str]
 
 @dataclass
 class EditorInChiefAgent:
+    courseware_context: dict[str, Any] | None = None
     system_prompt: str = ""
     llm: LLMFn = call_llm
     last_llm_response: str = field(default="", init=False)
@@ -31,6 +32,7 @@ class EditorInChiefAgent:
                 {
                     "topics": to_serializable(topics),
                     "calendar_item": calendar_item or {},
+                    "courseware_context": self._courseware_prompt_context(),
                     "task": "从 3 个选题中评估出今天最推荐优先发布的 1 个主推选题；C/E/S三篇都会继续成稿。",
                 },
                 ensure_ascii=False,
@@ -69,6 +71,15 @@ class EditorInChiefAgent:
             conversion_suggestion=selected_topic.suitable_product,
             final_title_suggestion=selected_topic.title,
         )
+
+    def _courseware_prompt_context(self) -> dict[str, Any]:
+        context = self.courseware_context or {}
+        return {
+            "enabled": context.get("enabled", False),
+            "available": context.get("available", False),
+            "files": [item.get("path", "") for item in context.get("files", [])],
+            "summary": context.get("summary", ""),
+        }
 
     def _score_topic(
         self,

@@ -13,6 +13,7 @@ LLMFn = Callable[[str, str], str]
 
 @dataclass
 class WriterAgent:
+    courseware_context: dict[str, object] | None = None
     system_prompt: str = ""
     llm: LLMFn = call_llm
     last_llm_response: str = field(default="", init=False)
@@ -23,6 +24,7 @@ class WriterAgent:
             json.dumps(
                 {
                     "decision": to_serializable(decision),
+                    "courseware_context": self._courseware_prompt_context(),
                     "task": "根据主编确定的选题生成文章大纲和公众号正文。",
                 },
                 ensure_ascii=False,
@@ -43,8 +45,8 @@ class WriterAgent:
             case_design={
                 "案例背景": topic.case_direction,
                 "案例冲突": topic.user_pain,
-                "案例结果": "团队通过流程、目标和检查点降低试错成本，产出更稳定。",
-                "案例启发": "管理不是靠老板更忙，而是靠系统让团队重复做对动作。",
+                "案例结果": "团队通过岗位流程、操作步骤、数据评估和复盘机制降低试错成本，产出更稳定。",
+                "案例启发": "管理不是靠老板更忙，而是靠流程让团队重复做对动作。",
             },
             golden_sentences=[
                 "不是员工不努力，而是公司没有标准动作。",
@@ -52,11 +54,21 @@ class WriterAgent:
                 "流程不是把人管死，而是让普通人也能做出稳定结果。",
                 "管理的终点，不是老板更勤奋，而是团队能自动运转。",
                 "SOP不是写给老板看的，而是写给团队重复执行的。",
+                "先找流程，再找方法，最后找人跑。",
             ],
             full_draft=body,
             ending_cta="如果你也想梳理店铺运营流程，可以私信关键词「诊断」，先从一个核心流程开始拆。",
             topic=topic,
         )
+
+    def _courseware_prompt_context(self) -> dict[str, object]:
+        context = self.courseware_context or {}
+        return {
+            "enabled": context.get("enabled", False),
+            "available": context.get("available", False),
+            "files": [item.get("path", "") for item in context.get("files", [])],
+            "summary": context.get("summary", ""),
+        }
 
     def write_draft(self, topic: ContentTopic) -> dict[str, str]:
         decision = EditorialDecision(
@@ -75,7 +87,7 @@ class WriterAgent:
         return {"title": draft.title, "body": draft.body}
 
     def _build_outline(self, topic: ContentTopic) -> list[str]:
-        return [
+        outline = [
             "开头: 用一个电商老板熟悉的管理困境切入",
             f"观点: {topic.core_insight}",
             f"痛点: {topic.pain_point}",
@@ -85,11 +97,15 @@ class WriterAgent:
             "金句: 用一句老板能记住的话收住观点",
             "结尾: 用低压力方式引导留言或私信咨询",
         ]
+        if self._has_courseware_context():
+            outline.insert(4, "课件框架: 先找流程，再找方法，最后找人跑；用 S/A/B/C 标准评估过程结果")
+        return outline
 
     def _build_body(self, topic: ContentTopic, outline: list[str], editor_note: str) -> str:
         pain_point = clean_sentence(topic.pain_point)
         core_insight = clean_sentence(topic.core_insight)
         case_direction = clean_sentence(topic.case_direction)
+        courseware_note = self._courseware_note()
         return "\n\n".join(
             [
                 f"# {topic.title}",
@@ -104,6 +120,7 @@ class WriterAgent:
                     "但一换人，动作就变形；一换品，打法就重来；一换平台节奏，团队又开始问老板怎么办。"
                     "这时候问题就不是有没有经验，而是经验有没有被做成系统。"
                 ),
+                courseware_note,
                 (
                     "真正厉害的团队，不是每个人都特别强，而是普通人进来以后，也知道第一步做什么、第二步交付什么、异常情况找谁处理。"
                     "这篇文章不讲虚的，我们就拆一个问题：为什么赚钱的电商团队，最后都要做流程化。"
@@ -156,26 +173,31 @@ class WriterAgent:
                     "而是把打爆款这件事拆成最小作战单元：每一步有 SOP、有记录、有复盘。"
                     "这样新人不是听老员工讲故事，而是照着流程看动作、看标准、看数据。"
                 ),
-                "## 五、核心方法：知识库 + 多维表 + 流程可视化",
+                "## 五、核心方法：先找流程，再找方法，最后找人跑",
                 (
-                    "第一件事，做知识库。"
-                    "知识库不是资料堆，也不是把文件夹分得很漂亮。"
-                    "真正有用的知识库，必须按业务拆：选品、运营、投放、供应链、人事，每个模块都有编号、名称、链接和负责人。"
+                    "第一，找流程。"
+                    "不要一上来就写一大本制度，而是先把一个岗位每天到底怎么交付拆清楚。"
+                    "按课件里的方法，可以从主题开始拆到一级流程、二级流程、操作步骤，再补上数据评估。"
                 ),
                 (
-                    "第二件事，做多维表。"
-                    "为什么很多 SOP 落不下去？因为它只是文档，不参与日常业务。"
-                    "多维表的价值，是把流程字段变成每天更新的工作台，比如负责人、当前进度、数据表现、异常状态、下一步动作、复盘结论。"
+                    "第二，找方法。"
+                    "流程不是把动作写下来就结束了，还要找出现在最有效的方法。"
+                    "先盘点团队目前跑得通的方法，再看市场上有没有更好的方法，最后用 AB 测试验证，留下效率最高、结果最稳的做法。"
                 ),
                 (
-                    "第三件事，做流程可视化。"
-                    "很多公司说自己有流程，其实只是 PPT 里画了一条线。"
-                    "真正的流程可视化，是老板能实时看到业务在跑：哪些款在测，哪些款在打，哪些款在掉，谁在负责，卡在哪个环节。"
+                    "第三，找人跑。"
+                    "SOP 不是办公室里憋出来的，必须让业务里最会打仗的人先跑出来。"
+                    "课件里把这种人叫“兵王”：他先把方法跑通，再把过程梳理成 SOP，然后带人跑，最后换人也能跑。"
                 ),
                 (
-                    "这三件事合在一起，才是能落地的流程系统。"
-                    "知识库解决经验沉淀，多维表解决过程协作，流程可视化解决老板看全局。"
-                    "单独做任何一个，都容易变成形式。"
+                    "最后再加一套 S/A/B/C 评估标准。"
+                    "S 是超出预期，A 是优秀，B 是合格，C 是不合格。"
+                    "没有这个标准，流程就只是一张纸；有了标准，主管才知道怎么检查，员工才知道做到什么程度算过关。"
+                ),
+                (
+                    "比如仓库流程，不要只写“负责发货”。"
+                    "要拆成打单、拣货、验货、打包、快递分区揽收，每一步写清时间要求、责任人、异常处理和合格标准。"
+                    "客服流程也一样，不是只要求“服务好客户”，而是看询单转化率、响应时间、销售过程和话术库。"
                 ),
                 "## 六、为什么一定要拆成最小作战单元",
                 (
@@ -233,6 +255,25 @@ class WriterAgent:
                     "如果你需要，可以私信关键词「流程表」，先领一份电商运营流程诊断表，从一条流程开始改。"
                 ),
             ]
+        )
+
+    def _has_courseware_context(self) -> bool:
+        context = self.courseware_context or {}
+        return bool(context.get("available") and context.get("summary"))
+
+    def _courseware_note(self) -> str:
+        if not self._has_courseware_context():
+            return (
+                "这一篇先用六邦电商的通用流程化组织框架来写："
+                "把经验拆成流程，把流程变成标准，把标准接到日常检查。"
+            )
+
+        files = [item.get("path", "") for item in (self.courseware_context or {}).get("files", [])[:2]]
+        file_text = "、".join(path for path in files if path)
+        return (
+            "这一篇的底层框架，优先参考六邦 GitHub 课件库。"
+            f"本次读取到的重点资料包括：{file_text}。"
+            "写成文章时不照搬课件原文，而是把里面的岗位流程、SOP、S/A/B/C评估和业务复盘方法，翻译成老板能听懂的管理语言。"
         )
 
 

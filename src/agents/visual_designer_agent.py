@@ -13,6 +13,7 @@ LLMFn = Callable[[str, str], str]
 
 @dataclass
 class VisualDesignerAgent:
+    courseware_context: dict[str, object] | None = None
     system_prompt: str = ""
     llm: LLMFn = call_llm
     last_llm_response: str = field(default="", init=False)
@@ -30,6 +31,7 @@ class VisualDesignerAgent:
                     "topic": to_serializable(topic),
                     "review": to_serializable(review),
                     "publish_package": to_serializable(package),
+                    "courseware_context": self._courseware_prompt_context(),
                     "task": "根据定稿文章和发布包，生成公众号视觉排版方案与配图清单。",
                 },
                 ensure_ascii=False,
@@ -50,6 +52,15 @@ class VisualDesignerAgent:
             wechat_layout_notes=self._wechat_layout_notes(),
             image_generation_notes=self._image_generation_notes(),
         )
+
+    def _courseware_prompt_context(self) -> dict[str, object]:
+        context = self.courseware_context or {}
+        return {
+            "enabled": context.get("enabled", False),
+            "available": context.get("available", False),
+            "files": [item.get("path", "") for item in context.get("files", [])],
+            "summary": context.get("summary", ""),
+        }
 
     def _cover_direction(self, topic: ContentTopic, review: ReviewResult) -> str:
         return (
@@ -89,7 +100,7 @@ class VisualDesignerAgent:
         return [
             "开头痛点场景后放一张“问题地图”或“老板忙乱场景图”。",
             "讲原因时放流程断点图，说明问题不是单个员工造成的。",
-            "讲方法时放知识库、多维表、流程看板三件套图。",
+            "讲方法时放“找流程-找方法-找人跑”三步图和S/A/B/C评估卡。",
             "讲案例时放前后对比图：靠人盯人 vs 靠系统推进。",
             "结尾放领取资料/流程诊断表卡片，二维码区域留白。",
         ]
@@ -136,7 +147,7 @@ class VisualDesignerAgent:
                 purpose="解释文章核心方法，让读者看到经验如何变成流程资产。",
                 placement="插入在方法部分第一段之后。",
                 prompt=(
-                    "生成电商SOP流程图：经验复盘、字段拆解、标准动作、责任人、数据看板、复盘更新，"
+                    "生成电商SOP流程图：找流程、找方法、找人跑、S/A/B/C评估、复盘更新，"
                     "形成闭环。"
                 ),
                 caption="SOP不是文件夹，而是经验、标准、执行和复盘之间的闭环。",

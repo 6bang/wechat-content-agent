@@ -13,6 +13,7 @@ LLMFn = Callable[[str, str], str]
 
 @dataclass
 class OperationsAgent:
+    courseware_context: dict[str, object] | None = None
     system_prompt: str = ""
     llm: LLMFn = call_llm
     last_llm_response: str = field(default="", init=False)
@@ -24,6 +25,7 @@ class OperationsAgent:
                 {
                     "topic": to_serializable(topic),
                     "review": to_serializable(review),
+                    "courseware_context": self._courseware_prompt_context(),
                     "task": "根据定稿文章生成发布包。",
                 },
                 ensure_ascii=False,
@@ -51,14 +53,23 @@ class OperationsAgent:
             comment_questions=self._build_comment_questions(topic),
             repurpose_suggestions=[
                 "适合拆成短视频：老板越忙，公司越乱的三个信号。",
-                "适合做朋友圈长图：流程化组织的3个检查点。",
-                "适合沉淀成销售素材：客户咨询时用于解释为什么要先搭流程。",
-                "适合放进课程案例库：作为运营岗位管理或SOP章节案例。",
+                "适合做朋友圈长图：岗位流程梳理的3个检查点。",
+                "适合沉淀成销售素材：客户咨询时用于解释为什么要先梳理岗位流程。",
+                "适合放进课程案例库：作为运营岗位管理、SOP或流程化组织章节案例。",
             ],
             data_review_template=self._build_review_metrics(),
             body=review.final_body,
             selected_layer=topic.layer,
         )
+
+    def _courseware_prompt_context(self) -> dict[str, object]:
+        context = self.courseware_context or {}
+        return {
+            "enabled": context.get("enabled", False),
+            "available": context.get("available", False),
+            "files": [item.get("path", "") for item in context.get("files", [])],
+            "summary": context.get("summary", ""),
+        }
 
     def _build_title_options(self, topic: ContentTopic, review: ReviewResult) -> list[str]:
         return [
