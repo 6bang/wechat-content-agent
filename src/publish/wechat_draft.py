@@ -5,6 +5,8 @@ import json
 import mimetypes
 import os
 import re
+import shutil
+import subprocess
 import uuid
 import urllib.error
 import urllib.parse
@@ -64,7 +66,7 @@ def sync_output_to_wechat_draft(output_dir: Path, dry_run: bool = False) -> dict
         app_id=get_required_env("WECHAT_APP_ID"),
         app_secret=get_required_env("WECHAT_APP_SECRET"),
     )
-    thumb_media_id = get_thumb_media_id(access_token)
+    thumb_media_id = get_thumb_media_id(access_token, output_dir=output_dir)
     media_id = add_draft(
         access_token=access_token,
         title=title,
@@ -104,7 +106,7 @@ def get_access_token(app_id: str, app_secret: str) -> str:
     return str(token)
 
 
-def get_thumb_media_id(access_token: str) -> str:
+def get_thumb_media_id(access_token: str, output_dir: Path | None = None) -> str:
     existing_media_id = get_optional_env("WECHAT_THUMB_MEDIA_ID", "") or get_optional_env(
         "WECHAT_COVER_MEDIA_ID",
         "",
@@ -112,7 +114,8 @@ def get_thumb_media_id(access_token: str) -> str:
     if existing_media_id:
         return existing_media_id
 
-    cover_path = get_optional_env("WECHAT_COVER_IMAGE_PATH", "")
+    output_cover_path = resolve_output_cover_path(output_dir) if output_dir else None
+    cover_path = str(output_cover_path) if output_cover_path else get_optional_env("WECHAT_COVER_IMAGE_PATH", "")
     if not cover_path:
         raise WeChatDraftError(
             "Please set WECHAT_THUMB_MEDIA_ID or WECHAT_COVER_IMAGE_PATH before creating a draft."
@@ -125,6 +128,58 @@ def get_thumb_media_id(access_token: str) -> str:
         raise WeChatDraftError(f"Cover image does not exist: {path}")
 
     return upload_permanent_material(access_token, path=path, material_type="thumb")
+
+
+def resolve_output_cover_path(output_dir: Path | None) -> Path | None:
+    if output_dir is None:
+        return None
+
+    direct_candidates = [
+        output_dir / "cover_export" / "cover.jpg",
+        output_dir / "cover_export" / "cover.png",
+        output_dir / "visual_assets" / "cover.jpg",
+        output_dir / "visual_assets" / "cover.png",
+    ]
+    for path in direct_candidates:
+        if path.exists():
+            return path
+
+    cover_svg = output_dir / "visual_assets" / "cover.svg"
+    if not cover_svg.exists():
+        return None
+
+    exported = output_dir / "cover_export" / "cover.jpg"
+    if export_svg_cover_to_jpg(cover_svg, exported):
+        return exported
+    return None
+
+
+def export_svg_cover_to_jpg(svg_path: Path, jpg_path: Path) -> bool:
+    qlmanage = shutil.which("qlmanage")
+    sips = shutil.which("sips")
+    if not qlmanage or not sips:
+        return False
+
+    jpg_path.parent.mkdir(parents=True, exist_ok=True)
+    png_path = jpg_path.parent / f"{svg_path.name}.png"
+    try:
+        subprocess.run(
+            [qlmanage, "-t", "-s", "900", "-o", str(jpg_path.parent), str(svg_path)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if not png_path.exists():
+            return False
+        subprocess.run(
+            [sips, "-s", "format", "jpeg", "-Z", "300", str(png_path), "--out", str(jpg_path)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return jpg_path.exists()
+    except Exception:
+        return False
 
 
 def upload_permanent_material(access_token: str, path: Path, material_type: str = "thumb") -> str:
