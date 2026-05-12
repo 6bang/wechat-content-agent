@@ -69,47 +69,56 @@ def render_svg(asset: VisualAsset, visual_layout: VisualLayoutPackage, index: in
 
 
 def render_cover_svg(asset: VisualAsset, visual_layout: VisualLayoutPackage, layer: str) -> str:
-    primary, accent, background = LAYER_COLORS.get(layer, ("#222222", "#2D7DD2", "#F7F7F7"))
     title = visual_layout.title.strip(" 《》")
-    title_rows = svg_cover_title_lines(title, x=68, y=300)
+    title_rows = svg_cover_title_lines(title, x=72, y=160)
     subtitle = cover_subtitle(title, layer)
-    subtitle_rows, _ = svg_text_lines(subtitle, x=72, y=540, css_class="cover_subtitle", max_chars=18, line_height=38, max_lines=2)
+    subtitle_rows, _ = svg_text_lines(subtitle, x=72, y=270, css_class="cover_subtitle", max_chars=26, line_height=30, max_lines=2)
+    keywords = cover_keywords(title, layer)
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900" role="img" aria-label="{escape(title)}封面图">
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="900" height="383" viewBox="0 0 900 383" role="img" aria-label="{escape(title)}封面图">
   <defs>
-    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="{background}"/>
-      <stop offset="1" stop-color="#FFFFFF"/>
+    <linearGradient id="coverBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07172F"/>
+      <stop offset="0.54" stop-color="#213E9E"/>
+      <stop offset="1" stop-color="#F1722A"/>
     </linearGradient>
+    <radialGradient id="glowBlue" cx="30%" cy="20%" r="70%">
+      <stop offset="0" stop-color="#68A8FF" stop-opacity="0.48"/>
+      <stop offset="1" stop-color="#68A8FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowOrange" cx="92%" cy="92%" r="58%">
+      <stop offset="0" stop-color="#FFB24A" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#FFB24A" stop-opacity="0"/>
+    </radialGradient>
     <style>
-      .bg {{ fill: url(#paper); }}
-      .cover_title {{ fill: {primary}; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 74px; font-weight: 800; letter-spacing: 0; }}
-      .cover_subtitle {{ fill: #5C6470; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 31px; font-weight: 500; letter-spacing: 0; }}
-      .eyebrow {{ fill: {accent}; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 25px; font-weight: 800; letter-spacing: 0; }}
-      .brand {{ fill: {primary}; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 0; }}
-      .label {{ fill: #FFFFFF; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: 0; }}
-      .small {{ fill: #5C6470; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 22px; letter-spacing: 0; }}
+      .cover_title {{ fill: #FFFFFF; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 46px; font-weight: 800; letter-spacing: 0; }}
+      .cover_subtitle {{ fill: #DDE8FF; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 25px; font-weight: 700; letter-spacing: 0; }}
+      .eyebrow {{ fill: #FFFFFF; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: 0; }}
+      .brand {{ fill: #FFFFFF; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 0; }}
+      .small {{ fill: #DDE8FF; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: 0; }}
+      .cardText {{ fill: #FFFFFF; font-family: Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0; }}
     </style>
   </defs>
-  <rect class="bg" width="900" height="900"/>
-  <rect x="42" y="42" width="816" height="816" rx="42" fill="#FFFFFF" opacity="0.88"/>
-  <rect x="68" y="82" width="180" height="48" rx="24" fill="{accent}"/>
-  <text x="94" y="114" class="label">六邦电商</text>
-  <text x="68" y="174" class="eyebrow">给电商老板的流程化组织课</text>
+  <rect width="900" height="383" fill="url(#coverBg)"/>
+  <rect width="900" height="383" fill="url(#glowBlue)"/>
+  <rect width="900" height="383" fill="url(#glowOrange)"/>
+  <rect x="42" y="42" width="816" height="300" rx="18" fill="#FFFFFF" opacity="0.11"/>
+  <rect x="43" y="43" width="814" height="298" rx="18" fill="none" stroke="#FFFFFF" stroke-opacity="0.08"/>
+  <path d="M124 298 C230 274 300 292 365 260 C430 228 470 218 524 236" stroke="#FFC326" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.88"/>
+  <circle cx="124" cy="298" r="12" fill="#FFC326"/>
+  <circle cx="365" cy="260" r="12" fill="#FFC326"/>
+  <circle cx="524" cy="236" r="12" fill="#FFC326"/>
+  <text x="72" y="94" class="eyebrow">六邦电商｜流程化组织</text>
   {title_rows}
   {subtitle_rows}
-  <text x="72" y="820" class="brand">不是老板更忙，而是系统更强</text>
-  <g transform="translate(70 650)">
-    <rect x="0" y="0" width="760" height="145" rx="28" fill="{primary}" opacity="0.06"/>
-    <rect x="36" y="42" width="140" height="58" rx="18" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
-    <rect x="226" y="42" width="140" height="58" rx="18" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
-    <rect x="416" y="42" width="140" height="58" rx="18" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
-    <rect x="606" y="42" width="118" height="58" rx="18" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
-    <text x="69" y="78" class="small">流程</text>
-    <text x="259" y="78" class="small">标准</text>
-    <text x="449" y="78" class="small">复盘</text>
-    <text x="631" y="78" class="small">复制</text>
-    <path d="M176 71 H226 M366 71 H416 M556 71 H606" stroke="{accent}" stroke-width="7" stroke-linecap="round"/>
+  <text x="72" y="320" class="brand">{escape(keywords)}</text>
+  <g transform="translate(572 86)">
+    <rect x="0" y="0" width="216" height="166" rx="13" fill="#FFFFFF" opacity="0.18"/>
+    <rect x="26" y="30" width="160" height="18" rx="9" fill="#FFFFFF" opacity="0.82"/>
+    <rect x="26" y="70" width="114" height="15" rx="8" fill="#FFC326"/>
+    <rect x="26" y="101" width="138" height="15" rx="8" fill="#A7D9FF"/>
+    <rect x="26" y="132" width="92" height="15" rx="8" fill="#FF6D7D"/>
+    <text x="28" y="205" class="cardText">目标｜流程｜标准｜复盘</text>
   </g>
 </svg>
 """
@@ -122,8 +131,8 @@ def svg_cover_title_lines(title: str, x: int, y: int) -> str:
     elif "," in normalized:
         lines = [part.strip(" ?？") for part in normalized.split(",", 1)]
     else:
-        lines = wrap_text(title, max_chars=8, max_lines=3)
-    rows = [f'<text x="{x}" y="{y + index * 86}" class="cover_title">{escape(line)}</text>' for index, line in enumerate(lines[:3])]
+        lines = wrap_text(title, max_chars=13, max_lines=2)
+    rows = [f'<text x="{x}" y="{y + index * 58}" class="cover_title">{escape(line)}</text>' for index, line in enumerate(lines[:2])]
     return "\n  ".join(rows)
 
 
@@ -139,6 +148,20 @@ def cover_subtitle(title: str, layer: str) -> str:
     if layer == "E":
         return "电商团队管理，先抓真正的卡点"
     return "老板要从盯人，走向看系统"
+
+
+def cover_keywords(title: str, layer: str) -> str:
+    if "老板越忙" in title:
+        return "标准 · 流程 · 复盘 · 复制"
+    if "招运营" in title:
+        return "岗位 · 能力 · 绩效 · 结果"
+    if "岗位流程" in title:
+        return "流程 · 方法 · 人才 · 检查"
+    if layer == "S":
+        return "SOP · 工具 · 看板 · 执行"
+    if layer == "E":
+        return "运营 · 团队 · 管理 · 增长"
+    return "认知 · 系统 · 组织 · 增长"
 
 
 def render_visual_motif(asset_type: str, primary: str, accent: str) -> str:

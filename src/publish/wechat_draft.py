@@ -5,7 +5,6 @@ import json
 import mimetypes
 import os
 import re
-import shutil
 import subprocess
 import uuid
 import urllib.error
@@ -155,24 +154,21 @@ def resolve_output_cover_path(output_dir: Path | None) -> Path | None:
 
 
 def export_svg_cover_to_jpg(svg_path: Path, jpg_path: Path) -> bool:
-    qlmanage = shutil.which("qlmanage")
-    sips = shutil.which("sips")
-    if not qlmanage or not sips:
+    sips = shutil_which("sips")
+    if not sips:
         return False
 
     jpg_path.parent.mkdir(parents=True, exist_ok=True)
-    png_path = jpg_path.parent / f"{svg_path.name}.png"
+    png_path = jpg_path.parent / "cover.png"
     try:
         subprocess.run(
-            [qlmanage, "-t", "-s", "900", "-o", str(jpg_path.parent), str(svg_path)],
+            [sips, "-s", "format", "png", str(svg_path), "--out", str(png_path)],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        if not png_path.exists():
-            return False
         subprocess.run(
-            [sips, "-s", "format", "jpeg", "-Z", "300", str(png_path), "--out", str(jpg_path)],
+            [sips, "-s", "format", "jpeg", "-Z", "900", str(png_path), "--out", str(jpg_path)],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -180,6 +176,12 @@ def export_svg_cover_to_jpg(svg_path: Path, jpg_path: Path) -> bool:
         return jpg_path.exists()
     except Exception:
         return False
+
+
+def shutil_which(command: str) -> str | None:
+    from shutil import which
+
+    return which(command)
 
 
 def upload_permanent_material(access_token: str, path: Path, material_type: str = "thumb") -> str:
