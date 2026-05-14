@@ -387,6 +387,144 @@ outputs/2026-05-11/articles/C/wechat_draft_result.json
 
 注意：微信公众号接口通常需要 IP 白名单。最稳做法是把你 Mac 当前公网 IP 加到公众号后台白名单后，在本地执行同步命令。
 
+## 企业微信远程控制
+
+企业微信版本分成两件事：
+
+- `企业微信群机器人汇报`：GitHub Actions 每个阶段完成后，把进度发到企业微信群。
+- `企业微信自建应用接收指令`：你给“公众号远程控制 Agent”发一句话，它触发 GitHub Actions。
+
+提醒一下：企业微信群里的普通自定义机器人通常只能“发消息到群”，不能“读取群里别人发的指令”。所以第一版最稳的方式是：在企业微信自建应用会话里发控制指令，在企业微信群里看阶段汇报。后续如果一定要监听群聊指令，需要做企业微信会话内容存档或更复杂的服务端方案。
+
+已内置服务入口：
+
+```bash
+python src/remote/wecom_remote_control.py
+```
+
+支持的指令：
+
+```text
+重写今日三篇
+只跑选题
+主编评估
+写大纲
+写初稿
+审稿
+发布包
+视觉排版
+发C
+发E
+发S
+2026-05-14 发C
+帮助
+```
+
+推荐理解：
+
+- `重写今日三篇`：触发完整 GitHub Actions 流水线，重新生成 C/E/S 三篇文章。
+- `只跑选题`：只跑选题阶段。
+- `发C / 发E / 发S`：触发 Actions 先生成当天内容，再同步对应层级到公众号草稿箱。
+
+注意：`发C / 发E / 发S` 在 GitHub Actions 云端执行时，微信公众号后台也可能要求固定 IP 白名单。如果同步草稿箱失败，先用企业微信远程生成内容包，然后回到本地 Mac 执行 `python src/sync_wechat_draft.py --date 日期 --layer C/E/S` 会更稳。
+
+### 企业微信后台设置
+
+如果你只想先看企业微信群阶段汇报，先做“群机器人”即可：
+
+1. 打开企业微信群。
+2. 点右上角 `...`。
+3. 选择 `群机器人`。
+4. 添加一个自定义机器人，名字可以叫 `公众号内容流水线`。
+5. 复制 Webhook。
+6. 在 GitHub Secrets 里新增：
+   - `ENABLE_WECOM_NOTIFY=true`
+   - `WECOM_WEBHOOK_URL=刚复制的企业微信群机器人Webhook`
+
+如果你还想“远程发指令”，继续做下面的自建应用：
+
+1. 打开 [企业微信管理后台](https://work.weixin.qq.com/wework_admin/frame)。
+2. 进入 `应用管理`。
+3. 选择 `自建`，点击 `创建应用`。
+4. 应用名称建议填：`公众号远程控制 Agent`。
+5. 可见范围先选你自己，后面再加运营或主编。
+6. 创建完成后，记录这三个值：
+   - `企业ID`：在 `我的企业` → `企业信息` 里查看，对应 `WECOM_CORP_ID`。
+   - `AgentId`：应用详情页里查看，对应 `WECOM_AGENT_ID`。
+   - `Secret`：应用详情页里查看，对应 `WECOM_APP_SECRET`。
+7. 在应用详情里找到 `接收消息` 或 `API接收消息`。
+8. 设置 `URL`：填你部署后的公网地址，例如 `https://你的域名/wecom/callback`。
+9. 设置 `Token`：自己填一串随机字符串，保存到 `WECOM_CALLBACK_TOKEN`。
+10. 设置 `EncodingAESKey`：点击随机生成，保存到 `WECOM_ENCODING_AES_KEY`。
+11. 点击保存。如果提示校验失败，说明你的远程服务还没启动、URL 不通，或者环境变量填错。
+
+### 远程服务环境变量
+
+企业微信回调服务需要部署在一个有公网 HTTPS 地址的地方，比如 Render、Railway、腾讯云、阿里云或一台固定服务器。不要部署在 GitHub Actions 里，GitHub Actions 只负责被触发后跑任务。
+
+远程服务需要配置：
+
+```env
+ENABLE_WECOM_REMOTE_CONTROL=true
+ENABLE_WECOM_NOTIFY=true
+WECOM_WEBHOOK_URL=企业微信群机器人Webhook
+WECOM_CORP_ID=你的企业ID
+WECOM_AGENT_ID=你的应用AgentId
+WECOM_APP_SECRET=你的应用Secret
+WECOM_CALLBACK_TOKEN=你在企业微信后台填写的Token
+WECOM_ENCODING_AES_KEY=企业微信后台生成的EncodingAESKey
+WECOM_ALLOWED_USER_IDS=
+
+GITHUB_OWNER=6bang
+GITHUB_REPO=wechat-content-agent
+GITHUB_WORKFLOW_FILE=daily_content.yml
+GITHUB_DEFAULT_BRANCH=main
+GITHUB_ACTIONS_TOKEN=你的GitHub远程触发token
+```
+
+`WECOM_ALLOWED_USER_IDS` 可以先留空，表示可见范围内的人都能发指令。后续想限制谁能控制，再填企业微信用户 ID，多个用英文逗号隔开。
+
+`GITHUB_ACTIONS_TOKEN` 建议用 Fine-grained GitHub token：
+
+1. GitHub 右上角头像 → `Settings`。
+2. 进入 `Developer settings`。
+3. 点击 `Personal access tokens` → `Fine-grained tokens`。
+4. 只选择 `6bang/wechat-content-agent` 仓库。
+5. 权限给：
+   - `Actions: Read and write`
+   - `Contents: Read-only`
+6. 生成后只粘贴到远程服务环境变量里，不要写进代码。
+
+### 本地测试企业微信服务
+
+本地只能测试服务是否能启动，企业微信正式回调必须用公网 HTTPS 地址。
+
+```bash
+cd /Users/liuwenjun-15-air/Documents/New\ project\ 2/wechat-content-agent
+source .venv/bin/activate
+pip install -r requirements.txt
+python src/remote/wecom_remote_control.py
+```
+
+浏览器打开：
+
+```text
+http://127.0.0.1:8080/healthz
+```
+
+看到 `{"status":"ok"}` 就说明服务启动正常。
+
+### 企业微信群使用方式
+
+1. 把自建应用配置到你能收到消息的范围。
+2. 在企业微信里找到 `公众号远程控制 Agent` 这个应用。
+3. 给这个应用发：`帮助`。
+4. 如果服务配置正确，它会返回可用指令菜单。
+5. 发：`重写今日三篇`。
+6. GitHub Actions 会开始运行，飞书/企业微信群后续会看到阶段汇报。
+
+如果你发现普通群里发 `帮助` 没反应，不是你设置错了，大概率是普通群机器人不能接收指令。先在“公众号远程控制 Agent”这个自建应用会话里发指令，企业微信群负责接收汇报。
+
 ## GitHub Actions
 
 工作流文件：`.github/workflows/daily_content.yml`。
@@ -397,6 +535,8 @@ outputs/2026-05-11/articles/C/wechat_draft_result.json
 - 使用 `ubuntu-latest` 和 Python 3.11
 - 运行 `python src/main.py`
 - 上传当天 `outputs/YYYY-MM-DD/` 作为 artifact
+- 企业微信远程控制会通过 `workflow_dispatch` 传入 `action`、`stage`、`layer` 参数
+- 如果配置 `ENABLE_WECOM_NOTIFY=true` 和 `WECOM_WEBHOOK_URL`，也会把阶段汇报发到企业微信群
 
 需要配置 GitHub Secrets：
 
@@ -436,6 +576,8 @@ WECHAT_AUTHOR
 WECHAT_THUMB_MEDIA_ID
 WECHAT_COVER_IMAGE_PATH
 WECHAT_CONTENT_SOURCE_URL
+ENABLE_WECOM_NOTIFY
+WECOM_WEBHOOK_URL
 ```
 
 手动运行方式：
@@ -445,7 +587,10 @@ WECHAT_CONTENT_SOURCE_URL
 3. 选择 `Daily WeChat Content Agent`。
 4. 点击 `Run workflow`。
 5. 可选填写 `run_date`，不填则使用北京时间当天。
-6. 运行成功后，在 Summary 里下载 artifact 查看稿件。
+6. `action` 默认选 `daily_pipeline`。
+7. `stage` 默认选 `all`，也可以选 `topics/editor/outline/draft/review/publish/visual`。
+8. 如果 `action` 选 `sync_wechat_draft`，再选择 `layer` 为 `C/E/S`。
+9. 运行成功后，在 Summary 里下载 artifact 查看稿件。
 
 ## 人工确认发布
 

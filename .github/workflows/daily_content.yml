@@ -7,6 +7,37 @@ on:
         description: "Run date in YYYY-MM-DD. Defaults to Beijing today."
         required: false
         type: string
+      action:
+        description: "Remote action to run."
+        required: false
+        default: "daily_pipeline"
+        type: choice
+        options:
+          - daily_pipeline
+          - sync_wechat_draft
+      stage:
+        description: "Pipeline stage. Use all for the full workflow."
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - topics
+          - editor
+          - outline
+          - draft
+          - review
+          - publish
+          - visual
+          - all
+      layer:
+        description: "Article layer used when action is sync_wechat_draft."
+        required: false
+        default: "C"
+        type: choice
+        options:
+          - C
+          - E
+          - S
   schedule:
     - cron: "0 17 * * *" # 01:00 Beijing
 
@@ -45,6 +76,15 @@ jobs:
       COURSEWARE_PATH: courseware/6bang-courseware
       COURSEWARE_REFERENCE_PATHS: ${{ secrets.COURSEWARE_REFERENCE_PATHS }}
       COURSEWARE_MAX_FILES: ${{ secrets.COURSEWARE_MAX_FILES }}
+      ENABLE_WECHAT_DRAFT: ${{ secrets.ENABLE_WECHAT_DRAFT }}
+      WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
+      WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
+      WECHAT_AUTHOR: ${{ secrets.WECHAT_AUTHOR }}
+      WECHAT_THUMB_MEDIA_ID: ${{ secrets.WECHAT_THUMB_MEDIA_ID }}
+      WECHAT_COVER_IMAGE_PATH: ${{ secrets.WECHAT_COVER_IMAGE_PATH }}
+      WECHAT_CONTENT_SOURCE_URL: ${{ secrets.WECHAT_CONTENT_SOURCE_URL }}
+      ENABLE_WECOM_NOTIFY: ${{ secrets.ENABLE_WECOM_NOTIFY }}
+      WECOM_WEBHOOK_URL: ${{ secrets.WECOM_WEBHOOK_URL }}
 
     steps:
       - name: Check out repository
@@ -81,10 +121,25 @@ jobs:
         run: |
           set -euo pipefail
           RUN_DATE="${{ inputs.run_date }}"
+          ACTION="${{ inputs.action }}"
+          STAGE="${{ inputs.stage }}"
+          LAYER="${{ inputs.layer }}"
           if [[ -z "$RUN_DATE" ]]; then
             RUN_DATE="$(TZ=Asia/Shanghai date +%F)"
           fi
+          if [[ -z "$ACTION" ]]; then
+            ACTION="daily_pipeline"
+          fi
+          if [[ -z "$STAGE" ]]; then
+            STAGE="all"
+          fi
+          if [[ -z "$LAYER" ]]; then
+            LAYER="C"
+          fi
           echo "run_date=$RUN_DATE" >> "$GITHUB_OUTPUT"
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+          echo "layer=$LAYER" >> "$GITHUB_OUTPUT"
 
       - name: Run daily content pipeline
         shell: bash
@@ -94,7 +149,19 @@ jobs:
           export MODEL="${MODEL:-gpt-5.5-thinking}"
           export ENABLE_COURSEWARE_CONTEXT="${ENABLE_COURSEWARE_CONTEXT:-false}"
           export COURSEWARE_MAX_FILES="${COURSEWARE_MAX_FILES:-12}"
-          python src/main.py --date "${{ steps.resolve.outputs.run_date }}"
+          case "${{ steps.resolve.outputs.action }}" in
+            daily_pipeline)
+              python src/main.py --date "${{ steps.resolve.outputs.run_date }}" --stage "${{ steps.resolve.outputs.stage }}"
+              ;;
+            sync_wechat_draft)
+              python src/main.py --date "${{ steps.resolve.outputs.run_date }}"
+              python src/sync_wechat_draft.py --date "${{ steps.resolve.outputs.run_date }}" --layer "${{ steps.resolve.outputs.layer }}"
+              ;;
+            *)
+              echo "Unknown action: ${{ steps.resolve.outputs.action }}"
+              exit 1
+              ;;
+          esac
 
       - name: Upload generated outputs
         uses: actions/upload-artifact@v4

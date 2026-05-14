@@ -28,6 +28,11 @@ from notify.feishu_notify import (
     send_feishu_failure_report,
     send_feishu_stage_report,
 )
+from notify.wecom_notify import (
+    notify_wecom_from_output,
+    send_wecom_failure_report,
+    send_wecom_stage_report,
+)
 from storage.save_article import save_article
 from storage.save_json import save_json
 from storage.render_visual_assets import save_visual_assets
@@ -257,11 +262,27 @@ def report_stage(target_stage: str, report_stage: str, publish_date: str) -> Non
         output_files=output_file_paths(publish_date, report["output_files"]),
         next_step=report["next_step"],
     )
+    send_wecom_stage_report(
+        stage_name=report["stage_name"],
+        role_name=report["role_name"],
+        task_name=report["task_name"],
+        status=report["status"],
+        summary=report["summary"],
+        output_files=output_file_paths(publish_date, report["output_files"]),
+        next_step=report["next_step"],
+    )
 
 
 def report_failure(target_stage: str, publish_date: str, error: Exception) -> None:
     report = STAGE_REPORTS.get(target_stage) or STAGE_REPORTS["complete"]
     send_feishu_failure_report(
+        stage_name=report["stage_name"],
+        role_name=report["role_name"],
+        task_name=report["task_name"],
+        error=error,
+        output_files=output_file_paths(publish_date, report["output_files"]),
+    )
+    send_wecom_failure_report(
         stage_name=report["stage_name"],
         role_name=report["role_name"],
         task_name=report["task_name"],
@@ -1106,6 +1127,7 @@ def build_run_summary(
     decision: EditorialDecision,
     package: PublishPackage,
     feishu_sent: bool,
+    wecom_sent: bool,
     email_sent: bool,
     status: str,
     suggested_publish_time: str,
@@ -1141,6 +1163,7 @@ def build_run_summary(
         ],
         "status": status,
         "feishu_sent": feishu_sent,
+        "wecom_sent": wecom_sent,
         "email_sent": email_sent,
         "feishu_doc_created": bool(feishu_doc_result.get("created")),
         "feishu_doc_written": bool(feishu_doc_result.get("written")),
@@ -1474,6 +1497,7 @@ def _run_daily_pipeline_impl(
     save_article(output_dir / "email_summary.md", email_summary)
     report_stage(stage, "complete", publish_date)
     feishu_sent = notify_feishu_from_output(output_dir)
+    wecom_sent = notify_wecom_from_output(output_dir)
     email_sent = send_email_backup(
         subject=f"【公众号今日稿件】{publish_date}｜{package.title}",
         body=email_summary,
@@ -1497,6 +1521,7 @@ def _run_daily_pipeline_impl(
             decision=decision,
             package=package,
             feishu_sent=feishu_sent,
+            wecom_sent=wecom_sent,
             email_sent=email_sent,
             status="待人工发布",
             suggested_publish_time=suggested_publish_time,
