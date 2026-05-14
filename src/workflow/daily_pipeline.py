@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -201,6 +202,31 @@ def get_today_calendar_item(calendar: dict[str, Any], current_date: date) -> dic
         "让电商老板和管理者看到痛点、案例和方法。"
     )
     return item
+
+
+def load_recent_topic_titles(root_dir: Path, current_date: date, max_days: int = 45) -> list[str]:
+    outputs_dir = root_dir / "outputs"
+    if not outputs_dir.exists():
+        return []
+
+    titles: list[str] = []
+    min_date = date.fromordinal(current_date.toordinal() - max_days)
+    for path in sorted(outputs_dir.glob("*/topics.json"), reverse=True):
+        try:
+            output_date = date.fromisoformat(path.parent.name)
+        except ValueError:
+            continue
+        if output_date >= current_date or output_date < min_date:
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for topic in payload.get("topics", []):
+            title = str(topic.get("title", "")).strip()
+            if title and title not in titles:
+                titles.append(title)
+    return titles
 
 
 def output_file_path(publish_date: str, filename: str) -> str:
@@ -647,7 +673,7 @@ def render_feishu_article_paths(article_results: list[dict[str, Any]], publish_d
 
 
 def render_wechat_ready_article(review: ReviewResult) -> str:
-    return format_wechat_ready_article(review.final_title, review.final_body)
+    return format_wechat_ready_article(review.final_title, sanitize_public_article_text(review.final_body))
 
 
 def format_wechat_ready_article(title: str, markdown_text: str) -> str:
@@ -745,8 +771,28 @@ def is_internal_courseware_note(block: str) -> bool:
         "写成文章时不照搬课件原文",
         "outputs/",
         ".pptx",
+        "今天的选题",
+        "对应到今天的选题",
+        "本次读取",
+        "Agent",
     ]
     return any(marker in block for marker in internal_markers)
+
+
+def sanitize_public_article_text(markdown_text: str) -> str:
+    replacements = {
+        "这背后对应到今天的选题，就是：": "",
+        "这背后对应到今天的选题，就是": "",
+        "今天的选题": "这个问题",
+        "选题": "主题",
+        "Agent": "",
+    }
+    sanitized = markdown_text
+    for source, target in replacements.items():
+        sanitized = sanitized.replace(source, target)
+    sanitized = re.sub(r"本次读取到的重点资料包括：.*?。", "", sanitized)
+    sanitized = re.sub(r"这一篇的底层框架.*?。", "", sanitized)
+    return sanitized
 
 
 def should_highlight_paragraph(paragraph: str) -> bool:
@@ -1151,6 +1197,7 @@ def _run_daily_pipeline_impl(
     schedule = load_optional_yaml(root_dir / "config" / "schedule.yaml", DEFAULT_SCHEDULE)
     suggested_publish_time = str(schedule.get("suggested_publish_time") or "18:00")
     calendar_item = get_today_calendar_item(calendar, current_date)
+    calendar_item["recent_topic_titles"] = load_recent_topic_titles(root_dir, current_date)
     publish_date = calendar_item["date"]
     output_dir = root_dir / "outputs" / publish_date
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -96,6 +96,8 @@ suggested_publish_time: "18:00"
     assert len(wechat_ready) >= 2200
     assert "> " in wechat_ready
     assert "主编提示" not in wechat_ready
+    assert "今天的选题" not in wechat_ready
+    assert "对应到今天的选题" not in wechat_ready
     for layer in ["C", "E", "S"]:
         article_dir = output_dir / "articles" / layer
         assert (article_dir / "draft.md").exists()
@@ -108,3 +110,50 @@ suggested_publish_time: "18:00"
         article_text = (article_dir / "wechat_ready_article.md").read_text(encoding="utf-8")
         assert len(article_text) >= 2200
         assert "主编提示" not in article_text
+        assert "今天的选题" not in article_text
+
+
+def test_daily_pipeline_avoids_recent_topic_titles(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("USE_MOCK", "true")
+    monkeypatch.setenv("ENABLE_FEISHU", "false")
+    monkeypatch.setenv("ENABLE_FEISHU_DOC", "false")
+    monkeypatch.setenv("ENABLE_EMAIL", "false")
+    monkeypatch.setenv("ENABLE_COURSEWARE_CONTEXT", "false")
+
+    root = tmp_path / "project"
+    (root / "config").mkdir(parents=True)
+    (root / "outputs").mkdir()
+    (root / "config" / "brand.yaml").write_text(
+        "brand:\n  name: 测试品牌\n",
+        encoding="utf-8",
+    )
+    (root / "config" / "content_calendar.yaml").write_text(
+        """
+weekly_calendar:
+  monday:
+    code: C1
+    layer: 泛流量
+    column: 老板认知课
+    description: 企业经营认知
+""".strip(),
+        encoding="utf-8",
+    )
+    (root / "config" / "schedule.yaml").write_text('suggested_publish_time: "18:00"', encoding="utf-8")
+    (root / "prompts").mkdir()
+    for name in [
+        "topic_agent.md",
+        "editor_in_chief_agent.md",
+        "writer_agent.md",
+        "reviewer_agent.md",
+        "publisher_agent.md",
+        "visual_designer_agent.md",
+    ]:
+        (root / "prompts" / name).write_text("mock prompt", encoding="utf-8")
+
+    first = run_daily_pipeline(root, run_date=date(2026, 5, 11))
+    second = run_daily_pipeline(root, run_date=date(2026, 5, 18))
+
+    first_titles = {topic.title for topic in first["topics"]}
+    second_titles = {topic.title for topic in second["topics"]}
+
+    assert first_titles.isdisjoint(second_titles)

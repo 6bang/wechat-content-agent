@@ -25,6 +25,11 @@
 2. E层：行业流量内容，筛选精准电商老板和管理者。
 3. S层：专业内容，建立专业度并推动课程咨询转化。
 
+新鲜度要求：
+- 每天3个选题必须是新选题。
+- 优先避开最近45天已经写过、未发布过、作为候选稿出现过的标题和角度。
+- 即使昨天没有发布某一篇候选稿，今天也不要重复生成同一篇候选稿。
+
 每个选题必须输出：
 topic_id、title、layer、layer_name、target_user、user_pain、content_angle、opening_hook、core_point、article_structure、case_direction、conversion_value、suitable_product、recommended_score、reason。
 
@@ -35,3 +40,4 @@ topic_id、title、layer、layer_name、target_user、user_pain、content_angle�
 - 不能只给标题。
 - 不能写娱乐八卦式标题。
 - 每个选题都要能服务课程、咨询或企业服务转化。
+- 可以参考课件库和历史数据，但不要在面向读者的文章标题或正文里出现“课件库路径、GitHub、选题、Agent”等内部工作流字样。
