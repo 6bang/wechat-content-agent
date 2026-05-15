@@ -341,11 +341,12 @@ def build_takeaway(title: str, focus: str) -> str:
 
 
 def render_report(run_date: date, articles: list[CompetitorArticle]) -> str:
+    account_names = "、".join(article.account_name for article in articles) or "未配置"
     lines = [
         f"【公众号对标账号每日监控】",
         "",
         f"日期：{run_date.isoformat()}",
-        "监控账号：笔记侠、得到、刘润、差评君",
+        f"监控账号：{account_names}",
         "",
         "说明：阅读数来自已配置的数据源；若显示“待获取”，说明 API Key、wxid 或第三方数据源还没配置完整。",
         "",

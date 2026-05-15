@@ -1,18 +1,18 @@
 competitor_accounts:
   - name: "笔记侠"
-    wxid: ""
+    wxid: "Notesman"
     focus: "商业案例、组织管理、企业经营、创始人认知"
 
-  - name: "得到"
-    wxid: ""
+  - name: "罗辑思维"
+    wxid: "luojisw"
     focus: "知识服务、学习方法、认知升级、课程产品"
 
   - name: "刘润"
-    wxid: ""
+    wxid: "runliu-pub"
     focus: "商业认知、经营方法论、管理洞察、案例拆解"
 
   - name: "差评君"
-    wxid: ""
+    wxid: "chaping321"
     focus: "科技产品、互联网热点、消费电子、年轻化表达"
 
 notes:
