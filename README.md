@@ -550,6 +550,85 @@ http://127.0.0.1:8080/healthz
 
 如果你发现普通群里发 `帮助` 没反应，不是你设置错了，大概率是普通群机器人不能接收指令。先在“公众号远程控制 Agent”这个自建应用会话里发指令，企业微信群负责接收汇报。
 
+## 对标公众号每日监控
+
+系统可以每天盯 4 个对标公众号的最近一篇文章：
+
+```text
+笔记侠
+得到
+刘润
+差评君
+```
+
+监控结果会输出到：
+
+```text
+outputs/competitor_monitor/YYYY-MM-DD/competitor_monitor.md
+outputs/competitor_monitor/YYYY-MM-DD/competitor_monitor.json
+```
+
+如果开启飞书，会把报告发到飞书群。报告包括：
+
+- 最新文章标题
+- 发布时间
+- 阅读数
+- 点赞/喜欢数
+- 分享数
+- 评论数
+- 选题角度
+- 给六邦公众号的选题启发
+
+重要说明：微信官方没有给普通开发者开放“读取别的公众号阅读数”的稳定接口。要自动获取阅读数，需要接入第三方数据源。当前项目已预留 `Just One API` 接入，使用其微信公众号“用户发布帖子”和“文章互动指标”接口。相关接口文档：[`用户发布帖子`](https://docs.justoneapi.com/zh/api/wechat-official-accounts/user-published-posts-v1)、[`文章互动指标`](https://docs.justoneapi.com/zh/api/wechat-official-accounts/article-engagement-metrics-v1)。
+
+先在配置文件里补公众号微信号：
+
+```text
+config/competitor_accounts.yaml
+```
+
+里面的 `wxid` 要填公众号资料页里的“微信号”，不是显示名称。你可以在微信里打开公众号主页，点右上角资料页查看。
+
+环境变量：
+
+```env
+ENABLE_COMPETITOR_MONITOR_FEISHU=true
+COMPETITOR_MONITOR_PROVIDER=justoneapi
+JUSTONE_API_KEY=你的JustOneAPIKey
+JUSTONE_API_BASE=https://api.justoneapi.com
+```
+
+本地手动运行：
+
+```bash
+cd /Users/liuwenjun-15-air/Documents/New\ project\ 2/wechat-content-agent
+source .venv/bin/activate
+python src/monitor_competitors.py
+```
+
+指定日期：
+
+```bash
+python src/monitor_competitors.py --date 2026-05-15
+```
+
+如果暂时没有 API Key，系统也会生成报告，但阅读数会显示 `待获取`，并提示需要补 `JUSTONE_API_KEY` 或 `wxid`。这样不会影响主内容流水线。
+
+GitHub Actions 文件：
+
+```text
+.github/workflows/competitor_monitor.yml
+```
+
+默认每天北京时间 10:00 运行，也支持手动运行。需要在 GitHub Secrets 增加：
+
+```text
+ENABLE_COMPETITOR_MONITOR_FEISHU
+COMPETITOR_MONITOR_PROVIDER
+JUSTONE_API_KEY
+JUSTONE_API_BASE
+```
+
 ## GitHub Actions
 
 工作流文件：`.github/workflows/daily_content.yml`。
