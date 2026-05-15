@@ -11,12 +11,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from utils.llm import load_env
 
 
 WECHAT_API_BASE = "https://api.weixin.qq.com/cgi-bin"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class WeChatDraftError(RuntimeError):
@@ -42,9 +43,9 @@ def sync_output_to_wechat_draft(output_dir: Path, dry_run: bool = False) -> dict
     digest = extract_digest(publish_package, article_markdown)
     author = get_optional_env("WECHAT_AUTHOR", "老六")
     source_url = get_optional_env("WECHAT_CONTENT_SOURCE_URL", "")
-    content_html = markdown_to_wechat_html(article_markdown)
 
     if dry_run:
+        content_html = markdown_to_wechat_html(article_markdown, output_dir=output_dir)
         return {
             "enabled": is_wechat_draft_enabled(),
             "dry_run": True,
@@ -66,6 +67,15 @@ def sync_output_to_wechat_draft(output_dir: Path, dry_run: bool = False) -> dict
         app_secret=get_required_env("WECHAT_APP_SECRET"),
     )
     thumb_media_id = get_thumb_media_id(access_token, output_dir=output_dir)
+    content_html = markdown_to_wechat_html(
+        article_markdown,
+        output_dir=output_dir,
+        image_url_resolver=lambda image_src: resolve_wechat_article_image_url(
+            image_src=image_src,
+            output_dir=output_dir,
+            access_token=access_token,
+        ),
+    )
     media_id = add_draft(
         access_token=access_token,
         title=title,
@@ -195,6 +205,46 @@ def upload_permanent_material(access_token: str, path: Path, material_type: str 
     return str(media_id)
 
 
+def upload_article_image(access_token: str, path: Path) -> str:
+    query = urllib.parse.urlencode({"access_token": access_token})
+    url = f"{WECHAT_API_BASE}/media/uploadimg?{query}"
+    content_type, body = build_multipart_body(field_name="media", path=path)
+    payload = post_bytes(url, body=body, content_type=content_type)
+    image_url = payload.get("url")
+    if not image_url:
+        raise WeChatDraftError(f"WeChat did not return article image url after upload: {payload}")
+    return str(image_url)
+
+
+def resolve_wechat_article_image_url(image_src: str, output_dir: Path, access_token: str) -> str:
+    if image_src.startswith(("http://", "https://")):
+        return image_src
+    image_path = resolve_article_image_path(image_src, output_dir)
+    return upload_article_image(access_token, image_path)
+
+
+def resolve_article_image_path(image_src: str, output_dir: Path) -> Path:
+    raw_path = Path(urllib.parse.unquote(image_src)).expanduser()
+    candidates = []
+    if raw_path.is_absolute():
+        candidates.append(raw_path)
+    else:
+        candidates.extend(
+            [
+                output_dir / raw_path,
+                output_dir.parent / raw_path,
+                PROJECT_ROOT / raw_path,
+            ]
+        )
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate.resolve()
+
+    searched = ", ".join(str(candidate) for candidate in candidates)
+    raise WeChatDraftError(f"Article image does not exist: {image_src}. Searched: {searched}")
+
+
 def add_draft(
     access_token: str,
     title: str,
@@ -228,7 +278,11 @@ def add_draft(
     return str(media_id)
 
 
-def markdown_to_wechat_html(markdown_text: str) -> str:
+def markdown_to_wechat_html(
+    markdown_text: str,
+    output_dir: Path | None = None,
+    image_url_resolver: Callable[[str], str] | None = None,
+) -> str:
     lines = markdown_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     html_lines: list[str] = []
     list_mode: str | None = None
@@ -246,6 +300,12 @@ def markdown_to_wechat_html(markdown_text: str) -> str:
                 html_lines.append(f"</{list_mode}>")
                 list_mode = None
             html_lines.append("<section style=\"height:1px;background:#E8E2D8;margin:28px 0;\"></section>")
+        elif is_markdown_image(line):
+            if list_mode:
+                html_lines.append(f"</{list_mode}>")
+                list_mode = None
+            alt_text, image_src = parse_markdown_image(line)
+            html_lines.append(render_wechat_image_html(alt_text, image_src, output_dir, image_url_resolver))
         elif line.startswith("# "):
             if list_mode:
                 html_lines.append(f"</{list_mode}>")
@@ -292,6 +352,47 @@ def markdown_to_wechat_html(markdown_text: str) -> str:
             *html_lines,
             "</section>",
         ]
+    )
+
+
+def is_markdown_image(line: str) -> bool:
+    return bool(re.match(r"^!\[[^\]]*\]\([^)]+\)$", line.strip()))
+
+
+def parse_markdown_image(line: str) -> tuple[str, str]:
+    match = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)$", line.strip())
+    if not match:
+        return "", ""
+    return match.group(1).strip(), match.group(2).strip()
+
+
+def render_wechat_image_html(
+    alt_text: str,
+    image_src: str,
+    output_dir: Path | None = None,
+    image_url_resolver: Callable[[str], str] | None = None,
+) -> str:
+    if image_url_resolver:
+        try:
+            src = image_url_resolver(image_src)
+        except WeChatDraftError as exc:
+            print(f"WeChat article image skipped: {exc}")
+            return f"<!-- image skipped: {html.escape(image_src)} -->"
+    elif image_src.startswith(("http://", "https://")):
+        src = image_src
+    elif output_dir is not None:
+        try:
+            src = str(resolve_article_image_path(image_src, output_dir))
+        except WeChatDraftError:
+            src = image_src
+    else:
+        src = image_src
+
+    return (
+        "<p style=\"text-align:center;margin:34px 0 12px;\">"
+        f"<img src=\"{html.escape(src, quote=True)}\" alt=\"{html.escape(alt_text, quote=True)}\" "
+        "style=\"max-width:100%;height:auto;display:block;margin:0 auto;border-radius:4px;\" />"
+        "</p>"
     )
 
 

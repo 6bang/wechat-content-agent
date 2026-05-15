@@ -354,12 +354,37 @@ WECHAT_AUTHOR=老六
 WECHAT_THUMB_MEDIA_ID=可选，已经上传过的封面素材media_id
 WECHAT_COVER_IMAGE_PATH=assets/default_cover.jpg
 WECHAT_CONTENT_SOURCE_URL=
+ENABLE_WECHAT_RESOURCE_FOOTER=true
+WECHAT_RESOURCE_FOOTER_TEXT=我这里整理一份合适品牌的打品的SOP流程\n\n如果你有需要可以找我
+WECHAT_RESOURCE_IMAGE_PATHS=assets/brand_sop_flow_01.jpg,assets/brand_sop_flow_02.jpg,assets/brand_sop_flow_03.jpg,assets/brand_sop_flow_04.jpg
+ENABLE_WECHAT_CONTACT_QR=true
+WECHAT_CONTACT_QR_IMAGE_PATH=assets/wechat_contact_qr.jpg
 ```
 
 封面图二选一：
 
 - 推荐：配置 `WECHAT_THUMB_MEDIA_ID`，使用公众号素材库里已经上传过的封面素材。
 - 或者：配置 `WECHAT_COVER_IMAGE_PATH`，脚本会先上传本地封面图，再创建草稿。
+
+文章结尾会自动增加资料领取文案、打品 SOP 流程图和微信二维码。请把图片保存到：
+
+```text
+assets/brand_sop_flow_01.jpg
+assets/brand_sop_flow_02.jpg
+assets/brand_sop_flow_03.jpg
+assets/brand_sop_flow_04.jpg
+assets/wechat_contact_qr.jpg
+```
+
+默认结尾文案是：
+
+```text
+我这里整理一份合适品牌的打品的SOP流程
+
+如果你有需要可以找我
+```
+
+如果只想保留文字，不想插图，把 `.env` 里的 `WECHAT_RESOURCE_IMAGE_PATHS` 清空即可；如果不想放二维码，把 `ENABLE_WECHAT_CONTACT_QR=false`。
 
 先本地预检，不调用微信接口：
 

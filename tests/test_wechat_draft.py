@@ -31,6 +31,21 @@ def test_markdown_to_wechat_html_converts_headings_and_lists() -> None:
     assert "<strong>重点</strong>" in html
 
 
+def test_markdown_to_wechat_html_converts_images(tmp_path: Path) -> None:
+    image_path = tmp_path / "qr.jpg"
+    image_path.write_bytes(b"fake-image")
+
+    html = markdown_to_wechat_html(
+        "![打开图片长按识别二维码添加我的微信](qr.jpg)",
+        output_dir=tmp_path,
+        image_url_resolver=lambda image_src: f"https://img.example.com/{image_src}",
+    )
+
+    assert "<img" in html
+    assert "https://img.example.com/qr.jpg" in html
+    assert "打开图片长按识别二维码添加我的微信" in html
+
+
 def test_wechat_draft_dry_run_reads_outputs(tmp_path: Path) -> None:
     output_dir = tmp_path / "outputs" / "2026-05-11"
     output_dir.mkdir(parents=True)

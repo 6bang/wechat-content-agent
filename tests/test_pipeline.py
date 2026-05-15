@@ -18,6 +18,10 @@ def test_daily_pipeline_creates_publish_package(tmp_path: Path, monkeypatch) -> 
     monkeypatch.setenv("ENABLE_FEISHU_DOC", "false")
     monkeypatch.setenv("ENABLE_EMAIL", "false")
     monkeypatch.setenv("ENABLE_COURSEWARE_CONTEXT", "false")
+    monkeypatch.setenv("ENABLE_WECHAT_RESOURCE_FOOTER", "true")
+    monkeypatch.setenv("WECHAT_RESOURCE_IMAGE_PATHS", "assets/brand_sop_flow_01.jpg")
+    monkeypatch.setenv("ENABLE_WECHAT_CONTACT_QR", "true")
+    monkeypatch.setenv("WECHAT_CONTACT_QR_IMAGE_PATH", "assets/wechat_contact_qr.jpg")
 
     root = tmp_path / "project"
     (root / "config").mkdir(parents=True)
@@ -95,6 +99,10 @@ suggested_publish_time: "18:00"
     wechat_ready = (output_dir / "wechat_ready_article.md").read_text(encoding="utf-8")
     assert len(wechat_ready) >= 2200
     assert "> " in wechat_ready
+    assert "我这里整理一份合适品牌的打品的SOP流程" in wechat_ready
+    assert "如果你有需要可以找我" in wechat_ready
+    assert "assets/brand_sop_flow_01.jpg" in wechat_ready
+    assert "assets/wechat_contact_qr.jpg" in wechat_ready
     assert "主编提示" not in wechat_ready
     assert "今天的选题" not in wechat_ready
     assert "对应到今天的选题" not in wechat_ready
@@ -119,6 +127,10 @@ def test_daily_pipeline_avoids_recent_topic_titles(tmp_path: Path, monkeypatch) 
     monkeypatch.setenv("ENABLE_FEISHU_DOC", "false")
     monkeypatch.setenv("ENABLE_EMAIL", "false")
     monkeypatch.setenv("ENABLE_COURSEWARE_CONTEXT", "false")
+    monkeypatch.setenv("ENABLE_WECHAT_RESOURCE_FOOTER", "true")
+    monkeypatch.setenv("WECHAT_RESOURCE_IMAGE_PATHS", "assets/brand_sop_flow_01.jpg")
+    monkeypatch.setenv("ENABLE_WECHAT_CONTACT_QR", "true")
+    monkeypatch.setenv("WECHAT_CONTACT_QR_IMAGE_PATH", "assets/wechat_contact_qr.jpg")
 
     root = tmp_path / "project"
     (root / "config").mkdir(parents=True)

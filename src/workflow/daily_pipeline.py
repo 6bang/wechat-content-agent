@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -36,7 +37,7 @@ from notify.wecom_notify import (
 from storage.save_article import save_article
 from storage.save_json import save_json
 from storage.render_visual_assets import save_visual_assets
-from utils.llm import call_llm
+from utils.llm import call_llm, load_env
 from utils.courseware_loader import load_courseware_context, render_courseware_reference
 
 try:
@@ -66,6 +67,14 @@ FEISHU_ARTICLE_LINE_CHARS = 34
 FEISHU_ARTICLE_PARAGRAPH_LINES = 3
 WECHAT_ARTICLE_LINE_CHARS = 28
 WECHAT_ARTICLE_PARAGRAPH_LINES = 3
+DEFAULT_WECHAT_CONTACT_QR_PATH = "assets/wechat_contact_qr.jpg"
+DEFAULT_WECHAT_RESOURCE_FOOTER_TEXT = "我这里整理一份合适品牌的打品的SOP流程\n\n如果你有需要可以找我"
+DEFAULT_WECHAT_RESOURCE_IMAGE_PATHS = [
+    "assets/brand_sop_flow_01.jpg",
+    "assets/brand_sop_flow_02.jpg",
+    "assets/brand_sop_flow_03.jpg",
+    "assets/brand_sop_flow_04.jpg",
+]
 
 STAGE_REPORTS = {
     "topics": {
@@ -752,7 +761,48 @@ def format_wechat_ready_article(title: str, markdown_text: str) -> str:
     if not title_written:
         lines = [f"# {title}", "", *( [f"> {pull_quote}", "", "---", ""] if pull_quote else []), *lines]
 
+    lines = append_wechat_article_footer(lines)
     return trim_blank_lines(lines)
+
+
+def append_wechat_article_footer(lines: list[str]) -> list[str]:
+    load_env()
+    enabled = os.getenv("ENABLE_WECHAT_RESOURCE_FOOTER", "true").strip().lower() == "true"
+    if not enabled:
+        return lines
+
+    footer: list[str] = ["", "---", ""]
+    footer_text = os.getenv("WECHAT_RESOURCE_FOOTER_TEXT", DEFAULT_WECHAT_RESOURCE_FOOTER_TEXT)
+    footer_text = footer_text.replace("\\n", "\n").strip()
+    if footer_text:
+        for paragraph in footer_text.split("\n"):
+            footer.append(paragraph.strip())
+            footer.append("")
+
+    for index, image_path in enumerate(get_wechat_resource_image_paths(), start=1):
+        footer.append(f"![打品SOP流程图{index}]({image_path})")
+        footer.append("")
+
+    qr_enabled = os.getenv("ENABLE_WECHAT_CONTACT_QR", "true").strip().lower() == "true"
+    image_path = os.getenv("WECHAT_CONTACT_QR_IMAGE_PATH", DEFAULT_WECHAT_CONTACT_QR_PATH).strip()
+    alt_text = os.getenv("WECHAT_CONTACT_QR_ALT", "打开图片长按识别二维码添加我的微信").strip()
+    if qr_enabled and image_path:
+        footer.append(f"![{alt_text}]({image_path})")
+        footer.append("")
+    caption = os.getenv("WECHAT_CONTACT_QR_CAPTION", "").strip()
+    if qr_enabled and image_path and caption:
+        footer.append(caption)
+        footer.append("")
+    return [*lines, *footer]
+
+
+def get_wechat_resource_image_paths() -> list[str]:
+    if "WECHAT_RESOURCE_IMAGE_PATHS" not in os.environ:
+        return DEFAULT_WECHAT_RESOURCE_IMAGE_PATHS
+    raw_paths = os.getenv("WECHAT_RESOURCE_IMAGE_PATHS", "").strip()
+    if not raw_paths:
+        return []
+    return [path.strip() for path in raw_paths.split(",") if path.strip()]
 
 
 def format_wechat_heading(heading: str) -> str:
